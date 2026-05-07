@@ -1,0 +1,62 @@
+# Docker Compose · Sistema IA Café Colombia
+# ───────────────────────────────────────────────────────────────────────────
+# Levanta:
+#   - PostgreSQL 18 con datos del café
+#   - App Streamlit con todos los modelos
+#   - (opcional) ChromaDB independiente si se quiere persistencia compartida
+# ───────────────────────────────────────────────────────────────────────────
+# Uso:
+#   docker compose up -d --build
+#   docker compose logs -f app
+#   docker compose down
+# ───────────────────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: cafe_postgres
+    environment:
+      POSTGRES_DB: cafe_ia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - cafe_pgdata:/var/lib/postgresql/data
+      - ../03_scripts/bd/01_ddl_schema.sql:/docker-entrypoint-initdb.d/01_ddl_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ..
+      dockerfile: 08_docker/Dockerfile
+    container_name: cafe_streamlit
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_HOST: db
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: root
+      PG_DB: cafe_ia
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persistencia ChromaDB
+      - cafe_chromadb:/app/06_agente_rag/vectorstore
+      # Imagenes para CNN (si se montan desde host)
+      - ../01_datos/imagenes_cafe:/app/01_datos/imagenes_cafe:ro
+    restart: unless-stopped
+
+volumes:
+  cafe_pgdata:
+  cafe_chromadb:
