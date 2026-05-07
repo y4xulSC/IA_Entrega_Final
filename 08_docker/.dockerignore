@@ -1,0 +1,31 @@
+# Imágenes pesadas (montadas como volume)
+01_datos/imagenes_cafe/raw/
+01_datos/imagenes_cafe/train/
+01_datos/imagenes_cafe/val/
+01_datos/imagenes_cafe/test/
+
+# Notebooks (no necesarios en runtime)
+02_notebooks/.ipynb_checkpoints/
+*.ipynb
+
+# Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Git
+.git/
+.gitignore
+
+# Docs y presentación
+00_documentos/*.pdf
+09_presentacion/
+
+# Archivos temporales
+*.log
+*.tmp
+.DS_Store
+.env
