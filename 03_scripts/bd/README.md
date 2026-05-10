@@ -1,99 +1,110 @@
 # Base de datos PostgreSQL — Sistema IA Café
 
-## Configuración esperada (la del usuario)
+## Configuración esperada
 
-| Parámetro | Valor |
-|-----------|-------|
-| Versión | PostgreSQL 18.3 |
-| Driver | psqlODBC 64bit v13.02.0000-1 |
-| Host | localhost |
-| Puerto | 5432 |
-| Usuario | postgres |
-| Contraseña | root |
-| Base de datos | `cafe_ia` (a crear) |
+Se lee desde `.env` en la raíz del proyecto:
 
-## Pasos de instalación
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `PG_HOST` | localhost | |
+| `PG_PORT` | 5432 | |
+| `PG_USER` | postgres | |
+| `PG_PASSWORD` | root | |
+| `PG_DB` | cafe_ia | |
+| `LOG_LEVEL` | INFO | DEBUG/INFO/WARNING/ERROR |
+| `LOG_DIR` | 05_resultados/logs | Logs auto-generados |
 
-### 1. Crear la base
+## Archivos
+
+| Archivo | Función |
+|---------|---------|
+| `01_ddl_schema.sql` | DDL completo: tablas, vistas, triggers, datos semilla |
+| `_config_bd.py` | Módulo común: lee `.env`, configura logging, abre conexión |
+| `validar_pre_carga.py` | Reporte calidad de los `*_validado.csv` antes de cargar |
+| `02_carga_inicial.py` | Carga los validados a la BD (idempotente, con UPSERTs) |
+
+## Flujo recomendado
+
+### Paso 1 — Configurar `.env`
+```bash
+archivo .env
+# Editar .env si tus credenciales son diferentes:
+# ─── PostgreSQL ──────────────────────────────────────────────────────────
+PG_HOST=[host]
+PG_PORT=[puerto]
+PG_USER=[usuario_postgres]
+PG_PASSWORD=[contraseña]
+PG_DB=cafe_ia # Importante mantener el nombre de la base de datos
+# ─── Configuracion de logging ────────────────────────────────────────────
+# DEBUG | INFO | WARNING | ERROR
+LOG_LEVEL=INFO
+LOG_DIR=05_resultados/logs
+```
+
+### Paso 2 — Crear la BD (una sola vez)
 ```bash
 psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE cafe_ia;"
+psql -U postgres -h localhost -p 5432 -d cafe_ia -f 03_scripts/bd/01_ddl_schema.sql
 ```
 
-### 2. Cargar el esquema (DDL)
+### Paso 3 — Validar los CSVs antes de cargar
 ```bash
-psql -U postgres -h localhost -p 5432 -d cafe_ia -f 01_ddl_schema.sql
+python 03_scripts/bd/validar_pre_carga.py
 ```
 
-Esto crea:
-- 7 tablas dimensionales/auxiliares
-- 5 tablas de hechos
-- 1 vista materializada (`vw_master_municipal_mensual`)
-- Triggers de calidad de datos
-- Datos semilla (33 departamentos, 9 variedades, 6 enfermedades, 6 eventos ENSO)
+Output: tabla con shape, nulos PK, duplicados, outliers físicos por tabla. Si todo OK,
+genera reporte MD en `05_resultados/reportes/pre_carga_<timestamp>.md`.
 
-### 3. Cargar datos iniciales (Python)
+### Paso 4 — Cargar
 ```bash
-cd 03_scripts/bd
-pip install psycopg2-binary pandas
-python 02_carga_inicial.py
+python 03_scripts/bd/02_carga_inicial.py
 ```
 
-Carga en orden:
-1. `dim_periodo` — calendario 1990-2030
-2. ONI/ENSO actualizado
-3. `dim_municipio` — desde DEM + suelos
-4. `fact_produccion` — EVA 2da entrega + EVA municipal extendido
-5. `fact_precio` — FNC + precios consolidados
-6. `fact_imagen_enfermedad` — manifest consolidado
-7. Refresh vista materializada
+Carga en orden: `dim_periodo → ONI → dim_municipio → fact_clima → fact_precio → fact_produccion → fact_imagen_enfermedad → vista materializada`. Usa UPSERTs por PK natural (idempotente: puedes correrlo 2 veces sin duplicar).
 
-### 4. Verificar
+Logs: `05_resultados/logs/carga_inicial_<timestamp>.log` y consola.
+
+### Paso 5 — Verificar
 ```sql
--- Tablas creadas
-SELECT table_name FROM information_schema.tables
-WHERE table_schema = 'cafe' ORDER BY table_name;
-
--- Conteos
-SELECT 'dim_departamento' AS tabla, count(*) FROM cafe.dim_departamento
+SELECT 'dim_periodo' AS t,         count(*) FROM cafe.dim_periodo
 UNION ALL SELECT 'dim_municipio',     count(*) FROM cafe.dim_municipio
-UNION ALL SELECT 'dim_periodo',       count(*) FROM cafe.dim_periodo
-UNION ALL SELECT 'dim_enfermedad',    count(*) FROM cafe.dim_enfermedad
-UNION ALL SELECT 'dim_variedad_cafe', count(*) FROM cafe.dim_variedad_cafe
-UNION ALL SELECT 'fact_produccion',   count(*) FROM cafe.fact_produccion
 UNION ALL SELECT 'fact_clima',        count(*) FROM cafe.fact_clima
 UNION ALL SELECT 'fact_precio',       count(*) FROM cafe.fact_precio
+UNION ALL SELECT 'fact_produccion',   count(*) FROM cafe.fact_produccion
 UNION ALL SELECT 'fact_imagen_enfermedad', count(*) FROM cafe.fact_imagen_enfermedad;
 
--- Tablón maestro
 SELECT * FROM cafe.vw_master_municipal_mensual LIMIT 5;
 ```
 
-## Diccionario de datos
+## Cambios en el DDL respecto a versión 1.0
 
-Ver `10_diccionario_datos/DICCIONARIO_DATOS.md` en la raíz del proyecto.
+- `fact_clima`: agregadas `viento_max_kmh`, `radiacion_mj_m2`. Tipos numéricos ampliados (NUMERIC(5,2) para temperatura).
+- `fact_precio`: schema canónico en USD/kg y COP/kg (antes USD/lb y COP/125kg). Agregada `surge_flag`. Agregada `precio_arabica_brasil_cop_kg` (derivada).
+- Vista materializada: actualizada para los nuevos nombres.
 
-Para auto-documentación viva, consultar `cafe.aux_diccionario_columnas`.
+## Modos de carga
+
+```bash
+# Solo algunos pasos
+python 02_carga_inicial.py --solo periodos oni clima
+
+# Saltar pasos (ej. imágenes que son las más pesadas)
+python 02_carga_inicial.py --skip imagenes
+
+# Refrescar solo la vista
+python 02_carga_inicial.py --refresh-vistas
+```
 
 ## Backup y restore
 
 ```bash
-# Backup
 pg_dump -U postgres -h localhost -d cafe_ia -n cafe -F c -f cafe_ia_backup.dump
-
-# Restore
 pg_restore -U postgres -h localhost -d cafe_ia -c cafe_ia_backup.dump
 ```
 
-## Reglas de calidad implementadas
-
-- `CHECK` sobre rangos válidos (temperatura, severidad, áreas)
-- Trigger auto-cálculo de `rendimiento_ton_ha` si falta
-- `UNIQUE` constraints en `(id_municipio, id_periodo, fuente)` clima
-- Foreign keys con cascade adecuado
-- Índices en campos de filtro frecuente (anio, fuente, dataset)
-
-## Cambios futuros (versionado)
+## Versionado
 
 | Versión | Fecha | Cambio |
 |---------|-------|--------|
-| 1.0 | 2026-05 | Esquema inicial entrega final |
+| 1.0 | 2026-05 | Esquema inicial |
+| 1.1 | 2026-05 | Alineado con `*_validado.csv` (USD/kg, viento, radiación, surge_flag); carga lee de `procesados/`; `.env` + logging real |
