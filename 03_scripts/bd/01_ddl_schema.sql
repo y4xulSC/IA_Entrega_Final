@@ -132,16 +132,17 @@ CREATE TABLE cafe.fact_clima (
     id_clima            BIGSERIAL PRIMARY KEY,
     id_municipio        INT NOT NULL REFERENCES cafe.dim_municipio(id_municipio),
     id_periodo          INT NOT NULL REFERENCES cafe.dim_periodo(id_periodo),
-    temp_media_c        NUMERIC(4,1) CHECK (temp_media_c BETWEEN -5 AND 50),
-    temp_min_c          NUMERIC(4,1),
-    temp_max_c          NUMERIC(4,1),
+    temp_media_c        NUMERIC(5,2) CHECK (temp_media_c BETWEEN -5 AND 50),
+    temp_min_c          NUMERIC(5,2),
+    temp_max_c          NUMERIC(5,2),
     precipitacion_mm    NUMERIC(8,2) CHECK (precipitacion_mm >= 0),
     precipitacion_chirps_mm NUMERIC(8,2),
     et0_mm              NUMERIC(8,2),
-    humedad_rel_pct     NUMERIC(4,1),
-    radiacion_mj_m2     NUMERIC(6,2),
+    humedad_rel_pct     NUMERIC(5,2),
+    viento_max_kmh      NUMERIC(6,2),
+    radiacion_mj_m2     NUMERIC(7,2),
     ndvi                NUMERIC(5,3),
-    fuente              VARCHAR(20) NOT NULL DEFAULT 'IDEAM',
+    fuente              VARCHAR(20) NOT NULL DEFAULT 'OpenMeteo',
     creado_en           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(id_municipio, id_periodo, fuente)
 );
@@ -152,20 +153,23 @@ COMMENT ON TABLE cafe.fact_clima IS
 
 DROP TABLE IF EXISTS cafe.fact_precio CASCADE;
 CREATE TABLE cafe.fact_precio (
-    id_precio                   BIGSERIAL PRIMARY KEY,
-    id_periodo                  INT NOT NULL UNIQUE
-                                    REFERENCES cafe.dim_periodo(id_periodo),
-    precio_fnc_cop_125kg        NUMERIC(12,2),
-    precio_ico_usd_lb           NUMERIC(8,4),
-    precio_arabica_brasil_usd_lb NUMERIC(8,4),
-    precio_robusta_usd_lb       NUMERIC(8,4),
-    precio_world_bank_arabica_usd_kg NUMERIC(8,4),
-    precio_world_bank_robusta_usd_kg NUMERIC(8,4),
-    fnc_cosecha_60kg            NUMERIC(12,2),
-    fnc_export_60kg             NUMERIC(12,2),
-    trm_cop_usd                 NUMERIC(8,2),
-    ipc_general                 NUMERIC(8,4),
-    creado_en                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id_precio                       BIGSERIAL PRIMARY KEY,
+    id_periodo                      INT NOT NULL UNIQUE
+                                        REFERENCES cafe.dim_periodo(id_periodo),
+    -- Unidades canonicas: USD/kg para internacionales, COP/kg para FNC
+    -- (provienen del ETL en 01_datos/procesados/precios_validado.csv)
+    precio_arabica_brasil_usd_kg    NUMERIC(10,4),
+    precio_robusta_usd_kg           NUMERIC(10,4),
+    precio_arabica_wb_usd_kg        NUMERIC(10,4),
+    precio_robusta_wb_usd_kg        NUMERIC(10,4),
+    precio_fnc_cop_kg               NUMERIC(12,2),
+    precio_arabica_brasil_cop_kg    NUMERIC(14,2),
+    fnc_cosecha_60kg                NUMERIC(12,2),
+    fnc_export_60kg                 NUMERIC(12,2),
+    trm_cop_usd                     NUMERIC(10,2),
+    ipc_general                     NUMERIC(10,4),
+    surge_flag                      BOOLEAN DEFAULT false,
+    creado_en                       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 COMMENT ON TABLE cafe.fact_precio IS
     'Precios mensuales del café — fuentes nacionales e internacionales';
@@ -263,17 +267,19 @@ SELECT
     pr.produccion_ton, pr.rendimiento_ton_ha,
     pr.estado_fisico,
     cl.temp_media_c, cl.temp_min_c, cl.temp_max_c,
-    cl.precipitacion_mm, cl.precipitacion_chirps_mm, cl.et0_mm, cl.ndvi,
-    pc.precio_fnc_cop_125kg, pc.precio_ico_usd_lb,
-    pc.precio_arabica_brasil_usd_lb, pc.precio_robusta_usd_lb,
-    pc.fnc_cosecha_60kg, pc.fnc_export_60kg, pc.trm_cop_usd
+    cl.precipitacion_mm, cl.precipitacion_chirps_mm, cl.et0_mm,
+    cl.viento_max_kmh, cl.radiacion_mj_m2, cl.ndvi,
+    pc.precio_fnc_cop_kg, pc.precio_arabica_brasil_usd_kg,
+    pc.precio_robusta_usd_kg, pc.precio_arabica_wb_usd_kg,
+    pc.precio_arabica_brasil_cop_kg,
+    pc.fnc_cosecha_60kg, pc.fnc_export_60kg, pc.trm_cop_usd, pc.surge_flag
 FROM cafe.dim_municipio m
 JOIN cafe.dim_departamento d USING (id_departamento)
 JOIN cafe.dim_periodo p ON true
 LEFT JOIN cafe.fact_produccion pr ON pr.id_municipio = m.id_municipio AND pr.id_periodo = p.id_periodo
 LEFT JOIN cafe.fact_clima cl     ON cl.id_municipio = m.id_municipio AND cl.id_periodo = p.id_periodo
 LEFT JOIN cafe.fact_precio pc    ON pc.id_periodo = p.id_periodo
-WHERE m.zona_cafetera IS NOT NULL;
+WHERE m.zona_cafetera IS NOT NULL OR true;  -- todos los municipios cargados
 
 CREATE INDEX idx_master_anio_mes_mun
     ON cafe.vw_master_municipal_mensual(anio, mes, cod_mun);

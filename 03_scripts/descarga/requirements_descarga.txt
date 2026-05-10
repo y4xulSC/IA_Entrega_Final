@@ -21,7 +21,8 @@ Pillow>=10.0.0
 fredapi>=0.5.1            # FRED St. Louis Fed
 sodapy>=2.2.0             # Socrata (datos.gov.co, DANE)
 wbdata>=1.0.0             # World Bank
-yfinance>=0.2.30          # opcional, futures coffee
+yfinance>=0.2.30          # primario para TRM USDCOP, fallback FRED
+openpyxl>=3.1.0           # leer XLSX (World Bank, ICO, IMF)
 
 # Climáticos
 xarray>=2023.10.0         # NetCDF

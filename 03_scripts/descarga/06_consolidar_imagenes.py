@@ -1,36 +1,36 @@
 """
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
  06_consolidar_imagenes.py
-═══════════════════════════════════════════════════════════════════════════════
- Toma las imágenes raw descargadas por 01_descargar_imagenes_cafe.py y las
- consolida en una estructura unificada con etiquetas estándar:
+===============================================================================
+ Consolida imagenes raw descargadas por 01_descargar_imagenes_cafe.py en una
+ estructura unificada con etiquetas estandar.
 
    01_datos/imagenes_cafe/
-     train/{Roya,Gotera,Cercospora,Phoma,Miner,Sano}/
+     train/{Roya,Gotera,Cercospora,Phoma,Miner,Sano,SpiderMite}/
      val/  {...}/
      test/ {...}/
      manifest_consolidado.csv
 
- También combina las 47 imágenes CALIBRO de la 2da entrega.
+ Combina ademas las 47 imagenes CALIBRO de la 2da entrega.
 
- Mapeo de clases (entre datasets):
-   - "leaf rust", "rust", "roya", "Hemileia"          → Roya
-   - "miner"                                          → Miner
-   - "cercospora"                                     → Cercospora
-   - "phoma"                                          → Phoma
-   - "healthy", "sano", "Sin_enfermedad"              → Sano
-   - "gotera", "ojo de gallo"                         → Gotera
+ v3 (2026-05-08): typo Cerscospora corregido, SpiderMite agregado, soporte
+                  para crops BRACOL del script 07.
 
  Split estratificado por clase: 70% train / 15% val / 15% test
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 """
-
 from __future__ import annotations
 from pathlib import Path
 import csv
 import random
 import shutil
 import sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 random.seed(42)
 
@@ -41,24 +41,26 @@ OUT_DIR = PROJECT_ROOT / "01_datos" / "imagenes_cafe"
 CALIBRO_DIR = (PROJECT_ROOT.parent / "IA_Segunda_Entrega" / "datasets" /
                "calibro_imagenes")
 
-# Clases canónicas
-CLASES = ["Roya", "Gotera", "Cercospora", "Phoma", "Miner", "Sano"]
+CLASES = ["Roya", "Gotera", "Cercospora", "Phoma", "Miner", "Sano", "SpiderMite"]
 
-# Patrones para mapear clases originales → canónicas
 PATRONES_CLASE = [
-    ("Roya",      ["rust", "roya", "hemileia", "leaf_rust", "leafrust"]),
-    ("Gotera",    ["gotera", "ojo_de_gallo", "ojo de gallo", "mycena"]),
-    ("Cercospora",["cercospora"]),
-    ("Phoma",     ["phoma"]),
-    ("Miner",     ["miner", "leaf miner", "leaf_miner"]),
-    ("Sano",      ["healthy", "sano", "sin_enfermedad", "sin enfermedad", "salu"]),
+    ("Roya",       ["rust", "roya", "hemileia", "leaf_rust", "leafrust"]),
+    ("Gotera",     ["gotera", "ojo_de_gallo", "ojo de gallo", "mycena"]),
+    # JMuBEN trae el typo "Cerscospora" en su carpeta - mapearlo igual
+    ("Cercospora", ["cercospora", "cerscospora", "cescospora", "cersospora"]),
+    ("Phoma",      ["phoma"]),
+    ("Miner",      ["miner", "leaf miner", "leaf_miner"]),
+    ("Sano",       ["healthy", "sano", "sin_enfermedad", "sin enfermedad", "salu"]),
+    # Plaga (acaro rojo) - presente en RoCoLe y Coffee Leaf
+    ("SpiderMite", ["red_spider_mite", "red spider mite", "redspidermite",
+                    "spider mite", "spidermite", "tetranychus"]),
 ]
 
 EXTENSIONES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"}
 
 
-def detectar_clase(nombre_clase_raw: str, ruta: Path) -> str | None:
-    """Detecta clase canónica por nombre de carpeta original o filename."""
+def detectar_clase(nombre_clase_raw, ruta):
+    """Detecta clase canonica por nombre de carpeta original o filename."""
     texto = (nombre_clase_raw + " " + str(ruta)).lower()
     for canonica, patrones in PATRONES_CLASE:
         for p in patrones:
@@ -67,16 +69,16 @@ def detectar_clase(nombre_clase_raw: str, ruta: Path) -> str | None:
     return None
 
 
-def recolectar_imagenes() -> list[dict]:
-    """Construye lista unificada de imágenes con clase canónica."""
-    print("[recolección] escaneando imágenes raw ...")
+def recolectar_imagenes():
+    """Lista unificada de imagenes con clase canonica."""
+    print("[recoleccion] escaneando imagenes raw ...")
     out = []
 
     if not RAW_DIR.exists():
-        print(f"   ⚠  {RAW_DIR} no existe — ejecuta 01_descargar_imagenes_cafe.py")
+        print("   WARN " + str(RAW_DIR) +
+              " no existe - ejecuta 01_descargar_imagenes_cafe.py")
         return out
 
-    # Datasets descargados
     for ds_path in RAW_DIR.iterdir():
         if not ds_path.is_dir():
             continue
@@ -99,9 +101,8 @@ def recolectar_imagenes() -> list[dict]:
             except Exception:
                 pass
 
-    # CALIBRO local (2da entrega)
     if CALIBRO_DIR.exists():
-        print(f"   incluyendo CALIBRO desde {CALIBRO_DIR}")
+        print("   incluyendo CALIBRO desde " + str(CALIBRO_DIR))
         for img in CALIBRO_DIR.glob("*"):
             if img.suffix.lower() not in EXTENSIONES:
                 continue
@@ -119,18 +120,16 @@ def recolectar_imagenes() -> list[dict]:
                 "clase_original": nombre,
             })
 
-    print(f"   ✓ {len(out)} imágenes con clase canónica detectada")
-    # Conteo por clase
+    print("   OK " + str(len(out)) + " imagenes con clase canonica detectada")
     from collections import Counter
-    print("\n   Distribución por clase:")
+    print("\n   Distribucion por clase:")
     for cls, n in sorted(Counter(r["clase"] for r in out).items()):
-        print(f"     {cls:12s}: {n}")
+        print("     " + cls.ljust(12) + ": " + str(n))
 
     return out
 
 
-def split_estratificado(items: list[dict], train: float = 0.70,
-                        val: float = 0.15) -> dict[str, list[dict]]:
+def split_estratificado(items, train=0.70, val=0.15):
     """Split estratificado por clase."""
     from collections import defaultdict
     por_clase = defaultdict(list)
@@ -141,14 +140,14 @@ def split_estratificado(items: list[dict], train: float = 0.70,
         random.shuffle(lista)
         n = len(lista)
         n_train = int(n * train)
-        n_val   = int(n * val)
+        n_val = int(n * val)
         splits["train"].extend(lista[:n_train])
-        splits["val"]  .extend(lista[n_train:n_train+n_val])
-        splits["test"] .extend(lista[n_train+n_val:])
+        splits["val"].extend(lista[n_train:n_train + n_val])
+        splits["test"].extend(lista[n_train + n_val:])
     return splits
 
 
-def copiar_y_manifest(splits: dict[str, list[dict]]):
+def copiar_y_manifest(splits):
     """Copia archivos a out_dir/<split>/<clase>/ y escribe manifest."""
     print("\n[copiar] organizando archivos ...")
     manifest_rows = []
@@ -158,7 +157,8 @@ def copiar_y_manifest(splits: dict[str, list[dict]]):
             origen = Path(it["ruta_origen"])
             destino_dir = OUT_DIR / split / it["clase"]
             destino_dir.mkdir(parents=True, exist_ok=True)
-            destino = destino_dir / f"{it['dataset']}_{origen.stem}{origen.suffix}"
+            destino = destino_dir / (it['dataset'] + "_" +
+                                     origen.stem + origen.suffix)
             try:
                 if not destino.exists():
                     shutil.copy2(origen, destino)
@@ -170,35 +170,34 @@ def copiar_y_manifest(splits: dict[str, list[dict]]):
                     "ruta": str(destino.relative_to(OUT_DIR)),
                 })
             except Exception as e:
-                print(f"   ⚠  copia falló {origen.name}: {e}")
+                print("   WARN copia fallo " + origen.name + ": " + str(e))
 
-    # Manifest
     out_csv = OUT_DIR / "manifest_consolidado.csv"
     if manifest_rows:
         with open(out_csv, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=manifest_rows[0].keys())
+            w = csv.DictWriter(f, fieldnames=list(manifest_rows[0].keys()))
             w.writeheader()
             w.writerows(manifest_rows)
-        print(f"   ✓ {out_csv.name}: {len(manifest_rows)} imágenes")
-    print(f"\n   train: {len(splits['train'])}")
-    print(f"   val:   {len(splits['val'])}")
-    print(f"   test:  {len(splits['test'])}")
+        print("   OK " + out_csv.name + ": " + str(len(manifest_rows)) + " imagenes")
+    print("\n   train: " + str(len(splits['train'])))
+    print("   val:   " + str(len(splits['val'])))
+    print("   test:  " + str(len(splits['test'])))
 
 
 def main():
     print("=" * 70)
-    print(" Consolidación de imágenes café — todas las fuentes")
+    print(" Consolidacion de imagenes cafe - todas las fuentes")
     print("=" * 70)
 
     items = recolectar_imagenes()
     if not items:
-        print("\n⚠  Sin imágenes raw. Ejecuta primero 01_descargar_imagenes_cafe.py")
+        print("\nWARN Sin imagenes raw. Ejecuta primero 01_descargar_imagenes_cafe.py")
         sys.exit(1)
 
     splits = split_estratificado(items)
     copiar_y_manifest(splits)
 
-    print("\n✓ Listo. Imágenes consolidadas en", OUT_DIR)
+    print("\nOK Listo. Imagenes consolidadas en " + str(OUT_DIR))
     print("   Siguiente: 02_notebooks/NB08_CNN_dataset_ampliado.ipynb")
 
 

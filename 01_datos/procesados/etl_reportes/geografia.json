@@ -1,0 +1,17 @@
+{
+  "categoria": "geografia",
+  "n_input": 42,
+  "n_output": 21,
+  "errores": [],
+  "warnings": [],
+  "metricas": {
+    "municipios": 21
+  },
+  "archivos_entrada": [
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\geografia\\dem_municipal_altitud.csv",
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\geografia\\soilgrids_municipal.csv"
+  ],
+  "archivo_salida": "01_datos\\procesados\\geografia_validado.csv",
+  "timestamp": "2026-05-09T07:23:12.695474",
+  "ok": true
+}

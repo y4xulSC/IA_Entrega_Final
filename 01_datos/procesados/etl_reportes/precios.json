@@ -1,0 +1,27 @@
+{
+  "categoria": "precios",
+  "n_input": 6,
+  "n_output": 444,
+  "errores": [],
+  "warnings": [],
+  "metricas": {
+    "fred_brazil_meses": 411,
+    "fred_brazil_unidad_origen": "cents/lb -> USD/kg",
+    "fred_robusta_meses": 411,
+    "fred_robusta_unidad_origen": "cents/lb -> USD/kg",
+    "wb_meses": 780,
+    "trm_meses": 272,
+    "fnc_meses": 96,
+    "meses_con_surge_>25%": 6
+  },
+  "archivos_entrada": [
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\precios\\fred_coffee_brazil.csv",
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\precios\\fred_coffee_robusta.csv",
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\precios\\world_bank_coffee.csv",
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\precios\\banrep_trm.csv",
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Segunda_Entrega\\datasets\\fnc_cafe_mensual.csv"
+  ],
+  "archivo_salida": "01_datos\\procesados\\precios_validado.csv",
+  "timestamp": "2026-05-09T07:23:12.358791",
+  "ok": true
+}

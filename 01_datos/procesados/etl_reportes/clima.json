@@ -1,0 +1,20 @@
+{
+  "categoria": "clima",
+  "n_input": 6928,
+  "n_output": 6928,
+  "errores": [],
+  "warnings": [],
+  "metricas": {
+    "filas_temp_inconsistente": 0,
+    "huecos_temporales_municipales": 0,
+    "municipios_distintos": 16,
+    "rango_fechas": "1990-01-01|2026-01-01",
+    "anios_distintos": 37
+  },
+  "archivos_entrada": [
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\clima\\openmeteo_municipios_mensual.csv"
+  ],
+  "archivo_salida": "01_datos\\procesados\\clima_validado.csv",
+  "timestamp": "2026-05-09T07:23:12.420526",
+  "ok": true
+}

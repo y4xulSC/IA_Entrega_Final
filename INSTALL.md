@@ -108,7 +108,19 @@ UNION ALL SELECT 'fact_imagen', count(*) FROM cafe.fact_imagen_enfermedad;"
 
 ---
 
-## Paso 6 · Entrenar modelos (notebooks)
+## Paso 6 · Construir el dataset maestro
+
+```bash
+cd 03_scripts/utilidades
+python construir_master_municipal.py
+```
+
+Esto produce `01_datos/procesados/master_cafe_municipal_mensual.csv`
+y `master_cafe_municipal_anual.csv` que **todos los notebooks NB07-NB12
+esperan encontrar**. Lee de PostgreSQL si está cargado, o de los CSVs
+enriquecidos como fallback.
+
+## Paso 7 · Entrenar modelos (notebooks)
 
 ```bash
 cd 02_notebooks
