@@ -1,0 +1,37 @@
+{
+  "categoria": "produccion",
+  "n_input": 7263,
+  "n_output": 7263,
+  "errores": [],
+  "warnings": [
+    "codigo_dane derivado directamente de 'c_d_mun' (longitud tipica=5, zfill a 5)",
+    "1 filas con rendimiento incoherente (>0.5 ton/ha de error)",
+    "rendimiento fuera [0.1, 5] ton/ha en 13 filas"
+  ],
+  "metricas": {
+    "filas_rendimiento_incoherente": 1,
+    "municipios_distintos": 657,
+    "filas_post_filtros": 7263,
+    "rango_anios": "2007|2018",
+    "municipios_x_anio": {
+      "2007": 593,
+      "2008": 598,
+      "2009": 614,
+      "2010": 620,
+      "2011": 627,
+      "2012": 625,
+      "2013": 597,
+      "2014": 595,
+      "2015": 595,
+      "2016": 598,
+      "2017": 600,
+      "2018": 601
+    }
+  },
+  "archivos_entrada": [
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\produccion\\eva_cafe_municipal_2007_2024.csv"
+  ],
+  "archivo_salida": "01_datos\\procesados\\produccion_validado.csv",
+  "timestamp": "2026-05-09T07:23:12.580550",
+  "ok": true
+}

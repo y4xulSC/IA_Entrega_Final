@@ -1,0 +1,72 @@
+# Orquestador inicio 2026-05-08 02:22:43.263188
+# Seleccion: ['imagenes', 'precios', 'geografia', 'consolidar']
+
+
+======================================================================
+[imagenes] 01_descargar_imagenes_cafe.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga de datasets publicos de hojas de cafe - Entrega Final v3
+======================================================================
+Salida: C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw
+
+[1/4] RoCoLe (Mendeley) ...
+   limpiando zip invalido rocole.zip
+Traceback (most recent call last):
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\01_descargar_imagenes_cafe.py", line 394, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\01_descargar_imagenes_cafe.py", line 377, in main
+    resultados[nombre] = fn(out)
+                         ^^^^^^^
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\01_descargar_imagenes_cafe.py", line 168, in descargar_rocole
+    if f.get("filename", "").lower().endswith(
+       ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+
+======================================================================
+[precios] 02_descargar_precios_extendidos.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga de precios extendidos del cafe - Entrega Final
+======================================================================
+Salida: C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\enriquecidos\precios
+
+[1/5] FRED - Cafe Brasil + Robusta (1990-presente, API key oficial)
+   OK fred_coffee_brazil.csv: 411 obs
+   OK fred_coffee_robusta.csv: 411 obs
+
+[2/5] World Bank - Pink Sheet Commodity ...
+   OK world_bank_coffee.csv: 780 obs
+
+[3/5] IMF - Primary Commodity (DataMapper API) ...
+   WARN DataMapper sin datos - intentando fallback XLS ...
+   FAIL XLS https://www.imf.org/-/media/Files/Research/CommodityPrices/Monthly/external-data.ashx: 404 Client Error: Not Found for url: https://www.imf.org/-/media/files/research/commodityprices/monthly/external-data.pdf
+   OK imf_coffee.csv (XLS): 453 obs
+
+[4/5] BanRep TRM (USD/COP) - primario yfinance ...
+   OK banrep_trm.csv (yfinance): 272 obs
+
+[5/5] ICO - Composite indicator price ...
+   WARN scraping ICO: 404 Client Error: Not Found for url: https://ico.org/coffee_prices.asp
+   FAIL No se encontro XLS de ICO disponible
+   Descarga manual: https://www.ico.org/coffee_prices.asp
+
+[consolidar] Uniendo fuentes (enriquecidos/ + originales/) a mensual ...
+   incluyendo 2 archivo(s) manual(es) de originales/precios/:
+     - fnc_cafe_mensual.csv
+     - ICO_precios_cafe.csv
+   WARN imf_coffee.csv: sin columna 'fecha', omitido
+   OK precios_consolidados_mensual.csv: 797 meses (1960-01-01 -> 2026-05-01)
+
+  fuentes OK: 4/5  -> {'fred': True, 'wb': True, 'imf': True, 'banrep': True, 'ico': False}
+
+OK Listo. Siguiente: 03_descargar_clima_satelital.py
+
+======================================================================
+[geografia] 05_descargar_dem_suelos.py
+======================================================================

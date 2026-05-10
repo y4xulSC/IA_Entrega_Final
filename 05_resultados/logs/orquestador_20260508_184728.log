@@ -1,0 +1,56 @@
+# Orquestador inicio 2026-05-08 18:47:28.391762
+# Seleccion: ['bracol', 'consolidar']
+
+
+======================================================================
+[bracol] 07_procesar_bracol_yolo.py
+======================================================================
+======================================================================
+ BRACOL YOLO -> Crops para clasificacion
+======================================================================
+Origen   : C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw\bracol\BRACOL_REVIEWED_ANNOTATIONS\BRACOL_REVIEWED
+Destino  : C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw\bracol_crops
+Mapeo    : {0: 'Cercospora', 1: 'Miner', 2: 'Phoma', 3: 'Roya'}
+
+   train: 2462 crops generados (3336 saltados por tamano)
+   valid: 743 crops generados (837 saltados por tamano)
+   test: 333 crops generados (515 saltados por tamano)
+
+OK Total: 3538 crops generados en C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw\bracol_crops
+
+Distribucion por clase:
+  Cercospora     : 169
+  Miner          : 330
+  Phoma          : 1285
+  Roya           : 1754
+
+Siguiente: python 06_consolidar_imagenes.py
+
+======================================================================
+[consolidar] 06_consolidar_imagenes.py
+======================================================================
+======================================================================
+ Consolidacion de imagenes cafe - todas las fuentes
+======================================================================
+[recoleccion] escaneando imagenes raw ...
+   incluyendo CALIBRO desde C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Segunda_Entrega\datasets\calibro_imagenes
+   OK 65775 imagenes con clase canonica detectada
+
+   Distribucion por clase:
+     Cercospora  : 7850
+     Gotera      : 32
+     Miner       : 17308
+     Phoma       : 7856
+     Roya        : 11579
+     Sano        : 20559
+     SpiderMite  : 591
+
+[copiar] organizando archivos ...
+   OK manifest_consolidado.csv: 65775 imagenes
+
+   train: 46040
+   val:   9862
+   test:  9873
+
+OK Listo. Imagenes consolidadas en C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe
+   Siguiente: 02_notebooks/NB08_CNN_dataset_ampliado.ipynb

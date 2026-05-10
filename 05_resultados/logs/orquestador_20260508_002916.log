@@ -1,0 +1,316 @@
+# Orquestador inicio 2026-05-08 00:29:16.783799
+# Seleccion: ['imagenes', 'precios', 'clima', 'eva', 'geografia', 'consolidar']
+
+
+======================================================================
+[imagenes] 01_descargar_imagenes_cafe.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga de datasets publicos de hojas de cafe - Entrega Final
+======================================================================
+Salida: C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw
+
+[skip] rocole ya existe en C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw\rocole
+
+[2/4] BRACOL (Kaggle) ...
+   probando badasstechie/coffee-leaf-disease ...
+Dataset URL: https://www.kaggle.com/datasets/badasstechie/coffee-leaf-disease
+   FAIL badasstechie/coffee-leaf-disease: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   probando rahmasleam/bracol ...
+Dataset URL: https://www.kaggle.com/datasets/rahmasleam/bracol
+   FAIL rahmasleam/bracol: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   probando olafkrastovski/coffee-leaf-disease-bracol ...
+Dataset URL: https://www.kaggle.com/datasets/olafkrastovski/coffee-leaf-disease-bracol
+   FAIL olafkrastovski/coffee-leaf-disease-bracol: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   Mirror Mendeley sin auth (manual):
+   https://data.mendeley.com/datasets/yy2k5y8mxg/1
+
+[skip] jmuben ya existe en C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\imagenes_cafe\raw\jmuben
+
+[4/4] Coffee Leaf Diseases (Kaggle) ...
+   probando alvarole/coffee-leaf-diseases ...
+Dataset URL: https://www.kaggle.com/datasets/alvarole/coffee-leaf-diseases
+   FAIL alvarole/coffee-leaf-diseases: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   probando ahmadyousrydaboor/coffee-leaf-diseases ...
+Dataset URL: https://www.kaggle.com/datasets/ahmadyousrydaboor/coffee-leaf-diseases
+   FAIL ahmadyousrydaboor/coffee-leaf-diseases: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   probando aliaffan/coffee-leaf-diseases ...
+Dataset URL: https://www.kaggle.com/datasets/aliaffan/coffee-leaf-diseases
+   FAIL aliaffan/coffee-leaf-diseases: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+   probando yosefelmosehy/coffee-leaf-images ...
+Dataset URL: https://www.kaggle.com/datasets/yosefelmosehy/coffee-leaf-images
+   FAIL yosefelmosehy/coffee-leaf-images: 403 Client Error: Forbidden for url: https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset
+
+[manifest] Construyendo manifest_raw.csv ...
+   FAIL Sin imagenes encontradas
+
+======================================================================
+ RESUMEN
+======================================================================
+  rocole         : OK
+  bracol         : FAIL
+  jmuben         : OK
+  coffee_leaf    : FAIL
+
+Siguiente: python 06_consolidar_imagenes.py
+
+======================================================================
+[precios] 02_descargar_precios_extendidos.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga de precios extendidos del cafe - Entrega Final
+======================================================================
+Salida: C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\01_datos\enriquecidos\precios
+
+[1/5] FRED - Cafe Brasil + Robusta (1990-presente, API key oficial)
+   OK fred_coffee_brazil.csv: 411 obs
+   OK fred_coffee_robusta.csv: 411 obs
+
+[2/5] World Bank - Pink Sheet Commodity ...
+   OK world_bank_coffee.csv: 780 obs
+
+[3/5] IMF - Primary Commodity (DataMapper API) ...
+   WARN DataMapper sin datos - intentando fallback XLS ...
+   FAIL XLS https://www.imf.org/-/media/Files/Research/CommodityPrices/Monthly/external-data.ashx: 404 Client Error: Not Found for url: https://www.imf.org/-/media/files/research/commodityprices/monthly/external-data.pdf
+   OK imf_coffee.csv (XLS): 453 obs
+
+[4/5] BanRep TRM (USD/COP) - primario yfinance ...
+   OK banrep_trm.csv (yfinance): 272 obs
+
+[5/5] ICO - Composite indicator price ...
+   WARN scraping ICO: 404 Client Error: Not Found for url: https://ico.org/coffee_prices.asp
+   FAIL No se encontro XLS de ICO disponible
+   Descarga manual: https://www.ico.org/coffee_prices.asp
+
+[consolidar] Uniendo todas las fuentes a frecuencia mensual ...
+   OK precios_consolidados_mensual.csv: 797 meses (1960-01-01 -> 2026-05-01)
+
+  fuentes OK: 4/5  -> {'fred': True, 'wb': True, 'imf': True, 'banrep': True, 'ico': False}
+
+OK Listo. Siguiente: 03_descargar_clima_satelital.py
+
+======================================================================
+[clima] 03_descargar_clima_satelital.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga de clima satelital - Entrega Final
+======================================================================
+
+[Open-Meteo] 18 municipios . 1990-01-01-2026-01-01
+   (rate limit ~600/min . sleep adaptativo entre llamadas)
+   OK Neiva              (Huila): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+   OK Medellin           (Antioquia): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+   OK Pasto              (Narino): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+   OK Manizales          (Caldas): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+   OK Villamaria         (Caldas): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+   OK Armenia            (Quindio): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+   OK Pereira            (Risaralda): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+   OK Ibague             (Tolima): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+     - 429 esperando 90s (intento 5/5)
+   FAIL Cali: agotados 5 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+     - 429 esperando 90s (intento 5/5)
+   FAIL Popayan: agotados 5 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+     - 429 esperando 90s (intento 5/5)
+   FAIL Florencia: agotados 5 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+     - 429 esperando 90s (intento 5/5)
+   FAIL Cucuta: agotados 5 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+     - 429 esperando 90s (intento 5/5)
+   FAIL Bucaramanga: agotados 5 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+     - 429 esperando 80s (intento 4/5)
+   OK Tunja              (Boyaca): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+   OK Agua de Dios       (Cundinamarca): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+     - 429 esperando 40s (intento 3/5)
+   OK Monteria           (Cordoba): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+   OK Riohacha           (Guajira): 13150 dias
+     - 429 esperando 10s (intento 1/5)
+     - 429 esperando 20s (intento 2/5)
+   OK Santa Marta        (Magdalena): 13150 dias
+
+[Open-Meteo] reintentando 5 municipio(s) tras pausa de 60s ...
+   OK Cali               (Valle): 13150 dias (reintento)
+     - 429 esperando 10s (intento 1/7)
+     - 429 esperando 20s (intento 2/7)
+   OK Popayan            (Cauca): 13150 dias (reintento)
+     - 429 esperando 10s (intento 1/7)
+     - 429 esperando 20s (intento 2/7)
+   OK Florencia          (Caqueta): 13150 dias (reintento)
+     - 429 esperando 10s (intento 1/7)
+     - 429 esperando 20s (intento 2/7)
+     - 429 esperando 40s (intento 3/7)
+     - 429 esperando 80s (intento 4/7)
+     - 429 esperando 90s (intento 5/7)
+     - 429 esperando 90s (intento 6/7)
+     - 429 esperando 90s (intento 7/7)
+   FAIL Cucuta (reintento final): agotados 7 intentos. Ultimo error: None
+     - 429 esperando 10s (intento 1/7)
+     - 429 esperando 20s (intento 2/7)
+     - 429 esperando 40s (intento 3/7)
+     - 429 esperando 80s (intento 4/7)
+     - 429 esperando 90s (intento 5/7)
+     - 429 esperando 90s (intento 6/7)
+     - 429 esperando 90s (intento 7/7)
+   FAIL Bucaramanga (reintento final): agotados 7 intentos. Ultimo error: None
+
+   WARN Quedaron sin descargar: Cucuta, Bucaramanga
+
+   OK openmeteo_municipios_diario.csv: 210400 filas (16 municipios)
+   OK openmeteo_municipios_mensual.csv: 6928 filas
+
+[NOAA ONI] descargando ENSO Oceanic Nino Index (1950-presente) ...
+   OK enso_oni_extendido.csv: 915 obs
+
+WARN Open-Meteo cubrio 16/18 municipios. Considera reejecutar el script.
+
+OK Listo. Siguiente: 04_descargar_eva_municipal.py
+
+======================================================================
+[eva] 04_descargar_eva_municipal.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga EVA Municipal - Cafe (extendido a 2007-2024)
+======================================================================
+   OK App Token Socrata configurado (GDjbcSmk...)
+
+[Socrata] 2pnw-mmge ...
+   columnas detectadas: 17 (ej: c_d_dep, departamento, c_d_mun, municipio, grupo_de_cultivo, subgrupo_de_cultivo)
+   OK 7263 filas con filtro cafe
+
+OK eva_cafe_municipal_2007_2024.csv: 7263 filas
+
+OK Listo. Siguiente: 05_descargar_dem_suelos.py
+
+======================================================================
+[geografia] 05_descargar_dem_suelos.py
+======================================================================
+C:\Users\USER\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.2.0)/charset_normalizer (3.4.1) doesn't match a supported version!
+  warnings.warn(
+======================================================================
+ Descarga DEM + Suelos (variables agronomicas)
+======================================================================
+
+[DEM] consultando altitud SRTM via Open-Elevation ...
+   Neiva              (Huila         ) -> 459.0 msnm
+   Medellin           (Antioquia     ) -> 1481.0 msnm
+   Pasto              (Narino        ) -> 2544.0 msnm
+   Manizales          (Caldas        ) -> 2107.0 msnm
+   Armenia            (Quindio       ) -> 1480.0 msnm
+   Pereira            (Risaralda     ) -> 1411.0 msnm
+   Ibague             (Tolima        ) -> 1225.0 msnm
+   Cali               (Valle         ) -> 1016.0 msnm
+   Popayan            (Cauca         ) -> 1729.0 msnm
+   Florencia          (Caqueta       ) -> 264.0 msnm
+   Cucuta             (N. Santander  ) -> 310.0 msnm
+   Bucaramanga        (Santander     ) -> 968.0 msnm
+   Tunja              (Boyaca        ) -> 2694.0 msnm
+   Agua de Dios       (Cundinamarca  ) -> 382.0 msnm
+   Monteria           (Cordoba       ) -> 20.0 msnm
+   Riohacha           (Guajira       ) -> 7.0 msnm
+   Santa Marta        (Magdalena     ) -> 13.0 msnm
+   Villamaria         (Caldas        ) -> 1867.0 msnm
+   Salento            (Quindio       ) -> 1990.0 msnm
+   Salamina           (Caldas        ) -> 1781.0 msnm
+   Marsella           (Risaralda     ) -> 1544.0 msnm
+
+   OK dem_municipal_altitud.csv: 21 municipios
+
+[SoilGrids] consultando suelos a 0-30 cm (parser actualizado) ...
+   Neiva              pH=?  SOC=?
+   Medellin           pH=?  SOC=?
+   Pasto              pH=?  SOC=?
+   Manizales          pH=?  SOC=?
+   Armenia            pH=?  SOC=?
+   Pereira            pH=?  SOC=?
+   Ibague             pH=?  SOC=?
+   Cali               pH=?  SOC=?
+   Popayan            pH=?  SOC=?
+   Florencia          pH=?  SOC=?
+   Cucuta             pH=?  SOC=?
+   Bucaramanga        pH=?  SOC=?
+   Tunja              pH=?  SOC=?
+   Agua de Dios       pH=?  SOC=?
+   Monteria           pH=?  SOC=?
+   Riohacha           pH=?  SOC=?
+   Santa Marta        pH=?  SOC=?
+   Villamaria         pH=5.40  SOC=54.0
+   Salento            pH=?  SOC=?
+   Salamina           pH=?  SOC=?
+   Marsella           pH=?  SOC=?
+
+   OK soilgrids_municipal.csv: 21 municipios (1 con pH valido)
+
+  altitud OK : 21/21
+  suelos OK  : 1/21
+
+OK Listo.
+
+======================================================================
+[consolidar] 06_consolidar_imagenes.py
+======================================================================
+======================================================================
+ Consolidaci�n de im�genes caf� � todas las fuentes
+======================================================================
+[recolecci�n] escaneando im�genes raw ...
+   incluyendo CALIBRO desde C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Segunda_Entrega\datasets\calibro_imagenes
+Traceback (most recent call last):
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\06_consolidar_imagenes.py", line 206, in <module>
+    main()
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\06_consolidar_imagenes.py", line 193, in main
+    items = recolectar_imagenes()
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\OneDrive - Universidad Autonoma de Occidente\7 mo semestre\IA\IA_Proyecto\IA_Entrega_Final\03_scripts\descarga\06_consolidar_imagenes.py", line 122, in recolectar_imagenes
+    print(f"   \u2713 {len(out)} im�genes con clase can�nica detectada")
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 3: character maps to <undefined>

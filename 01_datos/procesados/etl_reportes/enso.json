@@ -1,0 +1,22 @@
+{
+  "categoria": "enso",
+  "n_input": 915,
+  "n_output": 915,
+  "errores": [],
+  "warnings": [],
+  "metricas": {
+    "oni_no_nulos": 915,
+    "rango_fechas": "1950-01-01|2026-03-01",
+    "conteo_fases": {
+      "Neutro": 418,
+      "Nina": 252,
+      "Nino": 245
+    }
+  },
+  "archivos_entrada": [
+    "C:\\Users\\USER\\OneDrive - Universidad Autonoma de Occidente\\7 mo semestre\\IA\\IA_Proyecto\\IA_Entrega_Final\\01_datos\\enriquecidos\\clima\\enso_oni_extendido.csv"
+  ],
+  "archivo_salida": "01_datos\\procesados\\enso_validado.csv",
+  "timestamp": "2026-05-09T07:23:12.552867",
+  "ok": true
+}

@@ -1,0 +1,37 @@
+# Secrets — nunca subir a git
+.env
+**/.env
+*.env.local
+
+# Kaggle credentials
+kaggle.json
+.kaggle/
+
+# Datos crudos pesados
+01_datos/imagenes_cafe/raw/
+01_datos/imagenes_cafe/train/
+01_datos/imagenes_cafe/val/
+01_datos/imagenes_cafe/test/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Outputs grandes
+*.pkl
+*.h5
+*.tflite
