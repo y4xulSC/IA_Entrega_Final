@@ -1,65 +1,76 @@
 """
-═══════════════════════════════════════════════════════════════════════════════
- 02_carga_inicial.py
-═══════════════════════════════════════════════════════════════════════════════
- Carga todos los CSVs (originales + enriquecidos) a la base de datos
- PostgreSQL `cafe_ia` (esquema `cafe`).
+===============================================================================
+ 02_carga_inicial.py  ·  Carga los *_validado.csv a PostgreSQL
+===============================================================================
+ Lee 01_datos/procesados/*_validado.csv (producidos por 03_scripts/etl/) y los
+ inserta en la BD `cafe_ia` esquema `cafe`. Idempotente (UPSERTs por PK natural).
 
  Pre-requisitos:
-   1. PostgreSQL 18.3 corriendo en localhost:5432 (usuario postgres / root)
-   2. Base creada:        psql -U postgres -c "CREATE DATABASE cafe_ia;"
-   3. Schema cargado:     psql -U postgres -d cafe_ia -f 01_ddl_schema.sql
-   4. pip install psycopg2-binary pandas python-dotenv
+   1. PostgreSQL >= 13 corriendo (config en .env)
+   2. Pipeline ETL ejecutado: 03_scripts/etl/etl_pipeline.py
+   3. (recomendado) Validacion previa: validar_pre_carga.py
+
+ Pasos:
+   psql -U postgres -c "CREATE DATABASE cafe_ia;"
+   psql -U postgres -d cafe_ia -f 01_ddl_schema.sql
+   pip install psycopg2-binary pandas
+   python 02_carga_inicial.py
 
  Uso:
-   python 02_carga_inicial.py
-   python 02_carga_inicial.py --solo periodos enso
+   python 02_carga_inicial.py                     # todo
+   python 02_carga_inicial.py --solo periodos enso clima
+   python 02_carga_inicial.py --skip imagenes
    python 02_carga_inicial.py --refresh-vistas
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 """
-
 from __future__ import annotations
 import argparse
-import os
 import sys
 from pathlib import Path
-from datetime import date, datetime
+from datetime import date
+
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _config_bd import (
+    PG_CONFIG, DIR_PROC, DIR_ENRIQ, PROJECT, conectar, get_logger
+)
+
 try:
-    import psycopg2
     from psycopg2.extras import execute_values
 except ImportError:
     print("Falta psycopg2: pip install psycopg2-binary")
     sys.exit(1)
 
-# Configuración (sobrescribible con env vars)
-PG_CONFIG = {
-    "host":     os.environ.get("PG_HOST", "localhost"),
-    "port":     int(os.environ.get("PG_PORT", "5432")),
-    "user":     os.environ.get("PG_USER", "postgres"),
-    "password": os.environ.get("PG_PASSWORD", "root"),
-    "dbname":   os.environ.get("PG_DB", "cafe_ia"),
-}
-
-HERE = Path(__file__).resolve()
-PROJECT_ROOT = HERE.parents[2]
-DIR_ORIGINALES = PROJECT_ROOT / "01_datos" / "originales"
-DIR_ENRIQUECIDOS = PROJECT_ROOT / "01_datos" / "enriquecidos"
-
-# También buscamos en la 2da entrega para reaprovechar
-DIR_2DA = PROJECT_ROOT.parent / "IA_Segunda_Entrega" / "datasets"
+logger = get_logger("carga_inicial")
 
 
-def conn():
-    return psycopg2.connect(**PG_CONFIG)
+# ════════════════════════════════════════════════════════════════════════════
+#  HELPERS
+# ════════════════════════════════════════════════════════════════════════════
+def _safe_num(v):
+    """None si NaN/None/'', sino el valor."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return None
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 1. Periodos (calendar table)
-# ────────────────────────────────────────────────────────────────────────────
-def cargar_periodos(year_start: int = 1990, year_end: int = 2030):
-    print(f"\n[periodos] generando calendario {year_start}-{year_end} ...")
+def _read_csv(path: Path):
+    if not path.exists():
+        logger.warning(f"No existe: {path.relative_to(PROJECT)}")
+        return None
+    df = pd.read_csv(path, low_memory=False)
+    logger.info(f"  leido {path.name}: {len(df)} filas")
+    return df
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  1. dim_periodo  ·  calendario 1990-2030 + ONI desde enso_validado
+# ════════════════════════════════════════════════════════════════════════════
+def cargar_periodos(year_start=1990, year_end=2030):
+    logger.info(f"\n[periodos] generando calendario {year_start}-{year_end}")
     rows = []
     d = date(year_start, 1, 1)
     while d.year <= year_end:
@@ -67,317 +78,382 @@ def cargar_periodos(year_start: int = 1990, year_end: int = 2030):
             d, d.year, d.month,
             1 if d.month <= 6 else 2,
             (d.month - 1) // 3 + 1,
-            None,        # oni rellenado luego
-            "Neutro",    # default
-            d.month in (3, 4, 5, 6, 9, 10, 11, 12),  # cosecha bimodal
+            None, "Neutro",
+            d.month in (3, 4, 5, 6, 9, 10, 11, 12),
         ))
-        # mes siguiente
-        if d.month == 12:
-            d = date(d.year + 1, 1, 1)
-        else:
-            d = date(d.year, d.month + 1, 1)
+        d = date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
 
     sql = """
         INSERT INTO cafe.dim_periodo
         (fecha, anio, mes, semestre, trimestre, oni, fase_enso, es_cosecha)
-        VALUES %s
-        ON CONFLICT (fecha) DO NOTHING
+        VALUES %s ON CONFLICT (fecha) DO NOTHING
     """
-    with conn() as c, c.cursor() as cur:
+    with conectar() as c, c.cursor() as cur:
         execute_values(cur, sql, rows)
-    print(f"   ✓ {len(rows)} periodos insertados (con upsert)")
+    logger.info(f"  OK {len(rows)} periodos (upsert)")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 2. Actualizar dim_periodo con ONI
-# ────────────────────────────────────────────────────────────────────────────
 def actualizar_oni():
-    """Cruza enso_oni_extendido.csv con dim_periodo y actualiza oni y fase_enso."""
-    archivo = DIR_ENRIQUECIDOS / "clima" / "enso_oni_extendido.csv"
-    if not archivo.exists():
-        archivo = DIR_2DA / "ENSO_1950-2026.csv"
-    if not archivo.exists():
-        print("[oni] sin archivo ENSO. Salta.")
+    """Cruza enso_validado.csv con dim_periodo y actualiza oni + fase_enso."""
+    logger.info("\n[oni] actualizando dim_periodo desde enso_validado.csv")
+    df = _read_csv(DIR_PROC / "enso_validado.csv")
+    if df is None:
+        logger.warning("  WARING  Saltando ONI (sin archivo). El pipeline ETL debe correr antes.")
         return
-    print(f"\n[oni] {archivo.name}")
-    df = pd.read_csv(archivo)
-    # Normalizar columnas
-    if "fecha" not in df.columns:
-        for cand in ["Fecha", "Date", "date"]:
-            if cand in df.columns:
-                df = df.rename(columns={cand: "fecha"})
-                break
-    if "oni" not in df.columns:
-        for cand in ["ANOM", "ONI", "value", "valor"]:
-            if cand in df.columns:
-                df = df.rename(columns={cand: "oni"})
-                break
+
     df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
     df = df.dropna(subset=["fecha", "oni"])
-    df["oni"] = pd.to_numeric(df["oni"], errors="coerce")
-    df["fase_enso"] = df["oni"].apply(
-        lambda x: "Nino" if x >= 0.5 else "Nina" if x <= -0.5 else "Neutro")
 
-    sql = """
-        UPDATE cafe.dim_periodo
-        SET oni = %s, fase_enso = %s
-        WHERE fecha = %s
-    """
-    with conn() as c, c.cursor() as cur:
-        cur.executemany(sql, [(r.oni, r.fase_enso,
-                               r.fecha.date() if hasattr(r.fecha, "date") else r.fecha)
-                              for r in df.itertuples()])
-    print(f"   ✓ {len(df)} periodos actualizados con ONI")
+    sql = "UPDATE cafe.dim_periodo SET oni = %s, fase_enso = %s WHERE fecha = %s"
+    rows = [(float(r.oni), str(r.fase_enso), r.fecha.date()) for r in df.itertuples()]
+    with conectar() as c, c.cursor() as cur:
+        cur.executemany(sql, rows)
+    logger.info(f"  OK {len(rows)} periodos con ONI actualizado")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 3. Cargar municipios
-# ────────────────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+#  2. dim_municipio  ·  desde geografia_validado.csv
+# ════════════════════════════════════════════════════════════════════════════
 def cargar_municipios():
-    archivo = DIR_ENRIQUECIDOS / "geografia" / "dem_municipal_altitud.csv"
-    if not archivo.exists():
-        print("[municipios] sin archivo DEM. Saltando — usa solo dim_municipio mínima.")
+    logger.info("\n[municipios] cargando dim_municipio desde geografia_validado.csv")
+    df = _read_csv(DIR_PROC / "geografia_validado.csv")
+    if df is None:
+        logger.warning("  WARING  Saltando municipios.")
         return
-    print(f"\n[municipios] {archivo.name}")
-    df = pd.read_csv(archivo)
 
-    # cargar también soilgrids si existe
-    suelos = DIR_ENRIQUECIDOS / "geografia" / "soilgrids_municipal.csv"
-    if suelos.exists():
-        ds = pd.read_csv(suelos)
-        df = df.merge(ds[["codigo_dane", "phh2o_0_30cm", "soc_0_30cm"]]
-                       .rename(columns={"phh2o_0_30cm":"soil_ph",
-                                        "soc_0_30cm":"soil_soc_pct"}),
-                       on="codigo_dane", how="left")
+    df["codigo_dane"] = df["codigo_dane"].astype(str).str.zfill(5)
 
     rows = []
-    with conn() as c, c.cursor() as cur:
-        # Mapear departamento → id_departamento
+    with conectar() as c, c.cursor() as cur:
         cur.execute("SELECT codigo_dane, id_departamento FROM cafe.dim_departamento")
         dpto_map = {r[0]: r[1] for r in cur.fetchall()}
 
         for r in df.itertuples():
-            cod_dpto = str(r.codigo_dane)[:2].zfill(2)
+            cod_dpto = str(r.codigo_dane)[:2]
             id_dpto = dpto_map.get(cod_dpto)
             if id_dpto is None:
                 continue
+            # Heuristica: la columna phh2o_0_30cm contiene el pH ponderado.
+            # SOC: soc_0_30cm.
+            ph = _safe_num(getattr(r, "phh2o_0_30cm", None))
+            soc = _safe_num(getattr(r, "soc_0_30cm", None))
             rows.append((
-                str(r.codigo_dane).zfill(5), r.municipio, id_dpto,
-                getattr(r, "altitud_msnm", None),
-                getattr(r, "lat", None), getattr(r, "lon", None),
-                None, None, getattr(r, "soil_ph", None),
-                getattr(r, "soil_soc_pct", None),
+                r.codigo_dane, r.municipio, id_dpto,
+                _safe_num(r.altitud_msnm),
+                _safe_num(r.lat), _safe_num(r.lon),
+                None, None, ph, soc,
             ))
 
         sql = """
             INSERT INTO cafe.dim_municipio
-            (codigo_dane, nombre, id_departamento, altitud_msnm, lat, lon,
-             zona_cafetera, area_total_ha, soil_ph, soil_soc_pct)
+              (codigo_dane, nombre, id_departamento, altitud_msnm, lat, lon,
+               zona_cafetera, area_total_ha, soil_ph, soil_soc_pct)
             VALUES %s
             ON CONFLICT (codigo_dane) DO UPDATE SET
-                altitud_msnm = EXCLUDED.altitud_msnm,
-                soil_ph = EXCLUDED.soil_ph,
-                soil_soc_pct = EXCLUDED.soil_soc_pct
+              altitud_msnm = EXCLUDED.altitud_msnm,
+              soil_ph = EXCLUDED.soil_ph,
+              soil_soc_pct = EXCLUDED.soil_soc_pct
         """
         execute_values(cur, sql, rows)
-    print(f"   ✓ {len(rows)} municipios cargados")
+    logger.info(f"  OK {len(rows)} municipios cargados (upsert)")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 4. Cargar EVA producción (segunda entrega)
-# ────────────────────────────────────────────────────────────────────────────
-def cargar_eva():
-    arch_2da = DIR_2DA / "EVA_cafe_2019_2024.csv"
-    arch_municipal = DIR_ENRIQUECIDOS / "produccion" / "eva_cafe_municipal_2007_2024.csv"
-
-    archivos = [a for a in [arch_2da, arch_municipal] if a.exists()]
-    if not archivos:
-        print("[eva] sin archivos EVA. Saltando.")
+# ════════════════════════════════════════════════════════════════════════════
+#  3. fact_clima  ·  desde clima_validado.csv
+# ════════════════════════════════════════════════════════════════════════════
+def cargar_clima():
+    logger.info("\n  INFO [clima] cargando fact_clima desde clima_validado.csv")
+    df = _read_csv(DIR_PROC / "clima_validado.csv")
+    if df is None:
         return
 
-    print(f"\n[eva] cargando {len(archivos)} archivos ...")
-    with conn() as c, c.cursor() as cur:
+    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.date
+    df["codigo_dane"] = df["codigo_dane"].astype(str).str.zfill(5)
+    df = df.dropna(subset=["fecha"])
+
+    with conectar() as c, c.cursor() as cur:
         cur.execute("SELECT codigo_dane, id_municipio FROM cafe.dim_municipio")
         muni_map = {r[0]: r[1] for r in cur.fetchall()}
         cur.execute("SELECT fecha, id_periodo FROM cafe.dim_periodo")
         per_map = {r[0]: r[1] for r in cur.fetchall()}
 
-        rows = []
-        for archivo in archivos:
-            df = pd.read_csv(archivo)
-            df.columns = [c.strip().lower() for c in df.columns]
-            for r in df.itertuples():
-                # Detectar cod_municipio
-                cod = None
-                for cand in ("codigo_dane", "codigo_dane_municipio",
-                             "cod_municipio", "cod_mun"):
-                    if hasattr(r, cand):
-                        cod = str(getattr(r, cand)).zfill(5)
-                        break
-                if cod is None or cod not in muni_map:
-                    continue
+        rows, sin_mun, sin_per = [], 0, 0
+        for r in df.itertuples():
+            id_mun = muni_map.get(r.codigo_dane)
+            id_per = per_map.get(r.fecha)
+            if id_mun is None: sin_mun += 1; continue
+            if id_per is None: sin_per += 1; continue
+            rows.append((
+                id_mun, id_per,
+                _safe_num(r.temp_media_c),
+                _safe_num(getattr(r, "temp_min_c", None)),
+                _safe_num(getattr(r, "temp_max_c", None)),
+                _safe_num(r.precipitacion_mm),
+                None,  # precipitacion_chirps_mm
+                _safe_num(getattr(r, "et0_mm", None)),
+                None,  # humedad_rel_pct
+                _safe_num(getattr(r, "viento_max_kmh", None)),
+                _safe_num(getattr(r, "radiacion_mj_m2", None)),
+                None,  # ndvi
+                "OpenMeteo",
+            ))
 
-                # Detectar año
-                anio = getattr(r, "anio", getattr(r, "ano", None))
-                if anio is None or pd.isna(anio):
-                    continue
-                fecha = date(int(anio), 1, 1)
-                id_per = per_map.get(fecha)
-                if id_per is None:
-                    continue
-
-                rows.append((
-                    muni_map[cod], id_per, None,
-                    getattr(r, "area_sembrada_ha", None),
-                    getattr(r, "area_cosechada_ha", None),
-                    getattr(r, "produccion_ton", None),
-                    getattr(r, "rendimiento_ton_ha", None),
-                    getattr(r, "estado_fisico", None),
-                    "Permanente",  # café es permanente
-                    archivo.name[:30],
-                ))
-
-        if rows:
-            sql = """
-                INSERT INTO cafe.fact_produccion
-                (id_municipio, id_periodo, id_variedad, area_sembrada_ha,
-                 area_cosechada_ha, produccion_ton, rendimiento_ton_ha,
-                 estado_fisico, ciclo_cultivo, fuente)
-                VALUES %s
-            """
-            execute_values(cur, sql, rows)
-        print(f"   ✓ {len(rows)} registros producción insertados")
+        sql = """
+            INSERT INTO cafe.fact_clima
+              (id_municipio, id_periodo, temp_media_c, temp_min_c, temp_max_c,
+               precipitacion_mm, precipitacion_chirps_mm, et0_mm, humedad_rel_pct,
+               viento_max_kmh, radiacion_mj_m2, ndvi, fuente)
+            VALUES %s
+            ON CONFLICT (id_municipio, id_periodo, fuente) DO UPDATE SET
+              temp_media_c = EXCLUDED.temp_media_c,
+              precipitacion_mm = EXCLUDED.precipitacion_mm,
+              et0_mm = EXCLUDED.et0_mm
+        """
+        execute_values(cur, sql, rows)
+    logger.info(f"  OK {len(rows)} filas clima · sin_mun={sin_mun} sin_per={sin_per}")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 5. Cargar precios
-# ────────────────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+#  4. fact_precio  ·  desde precios_validado.csv
+# ════════════════════════════════════════════════════════════════════════════
 def cargar_precios():
-    archivo_2da = DIR_2DA / "fnc_cafe_mensual.csv"
-    archivo_extendido = DIR_ENRIQUECIDOS / "precios" / "precios_consolidados_mensual.csv"
+    logger.info("\n  INFO [precios] cargando fact_precio desde precios_validado.csv")
+    df = _read_csv(DIR_PROC / "precios_validado.csv")
+    if df is None:
+        return
 
-    print(f"\n[precios] cargando ...")
+    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.date
+    df = df.dropna(subset=["fecha"])
 
-    with conn() as c, c.cursor() as cur:
+    with conectar() as c, c.cursor() as cur:
         cur.execute("SELECT fecha, id_periodo FROM cafe.dim_periodo")
         per_map = {r[0]: r[1] for r in cur.fetchall()}
 
-        # 2da entrega: FNC mensual (precio interno)
-        if archivo_2da.exists():
-            df = pd.read_csv(archivo_2da)
-            df["fecha"] = pd.to_datetime(df.get("fecha", df.get("Fecha")), errors="coerce")
-            df = df.dropna(subset=["fecha"])
-            rows = []
-            for r in df.itertuples():
-                f_mes = date(r.fecha.year, r.fecha.month, 1)
-                id_per = per_map.get(f_mes)
-                if id_per is None: continue
-                rows.append((id_per,
-                    getattr(r, "precio_interno_cop_125kg", None),
-                    getattr(r, "precio_oic_compuesto_cusd_libra", None),
-                    None, None, None, None,
-                    getattr(r, "produccion_total_60kg", None),
-                    getattr(r, "exportaciones_60kg", None),
-                    None, None))
-            sql = """
-                INSERT INTO cafe.fact_precio
-                (id_periodo, precio_fnc_cop_125kg, precio_ico_usd_lb,
-                 precio_arabica_brasil_usd_lb, precio_robusta_usd_lb,
-                 precio_world_bank_arabica_usd_kg, precio_world_bank_robusta_usd_kg,
-                 fnc_cosecha_60kg, fnc_export_60kg,
-                 trm_cop_usd, ipc_general)
-                VALUES %s
-                ON CONFLICT (id_periodo) DO UPDATE SET
-                    precio_fnc_cop_125kg = EXCLUDED.precio_fnc_cop_125kg,
-                    precio_ico_usd_lb    = EXCLUDED.precio_ico_usd_lb
-            """
-            execute_values(cur, sql, rows)
-            print(f"   ✓ {len(rows)} meses de precios FNC")
+        rows = []
+        for r in df.itertuples():
+            id_per = per_map.get(r.fecha)
+            if id_per is None: continue
+            rows.append((
+                id_per,
+                _safe_num(getattr(r, "precio_arabica_brasil_usd_kg", None)),
+                _safe_num(getattr(r, "precio_robusta_usd_kg", None)),
+                _safe_num(getattr(r, "precio_arabica_wb_usd_kg", None)),
+                _safe_num(getattr(r, "precio_robusta_wb_usd_kg", None)),
+                _safe_num(getattr(r, "precio_fnc_cop_kg", None)),
+                _safe_num(getattr(r, "precio_arabica_brasil_cop_kg", None)),
+                None, None,  # fnc_cosecha_60kg, fnc_export_60kg
+                _safe_num(getattr(r, "trm_cop_usd", None)),
+                None,  # ipc_general
+                bool(getattr(r, "surge_flag", 0)),
+            ))
+
+        sql = """
+            INSERT INTO cafe.fact_precio
+              (id_periodo,
+               precio_arabica_brasil_usd_kg, precio_robusta_usd_kg,
+               precio_arabica_wb_usd_kg, precio_robusta_wb_usd_kg,
+               precio_fnc_cop_kg, precio_arabica_brasil_cop_kg,
+               fnc_cosecha_60kg, fnc_export_60kg,
+               trm_cop_usd, ipc_general, surge_flag)
+            VALUES %s
+            ON CONFLICT (id_periodo) DO UPDATE SET
+              precio_arabica_brasil_usd_kg = EXCLUDED.precio_arabica_brasil_usd_kg,
+              precio_fnc_cop_kg = EXCLUDED.precio_fnc_cop_kg,
+              trm_cop_usd = EXCLUDED.trm_cop_usd,
+              surge_flag = EXCLUDED.surge_flag
+        """
+        execute_values(cur, sql, rows)
+    logger.info(f"  OK {len(rows)} meses de precios cargados (upsert)")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 6. Cargar imágenes manifest
-# ────────────────────────────────────────────────────────────────────────────
-def cargar_imagenes():
-    manifest = PROJECT_ROOT / "01_datos" / "imagenes_cafe" / "manifest_consolidado.csv"
-    if not manifest.exists():
-        print("[imagenes] sin manifest_consolidado.csv. Saltando.")
+# ════════════════════════════════════════════════════════════════════════════
+#  5. fact_produccion  ·  desde produccion_validado.csv
+# ════════════════════════════════════════════════════════════════════════════
+def cargar_produccion():
+    logger.info("\n  INFO [produccion] cargando fact_produccion desde produccion_validado.csv")
+    df = _read_csv(DIR_PROC / "produccion_validado.csv")
+    if df is None:
         return
-    print(f"\n[imagenes] {manifest.name}")
-    df = pd.read_csv(manifest)
-    with conn() as c, c.cursor() as cur:
+
+    df["codigo_dane"] = df["codigo_dane"].astype(str).str.zfill(5)
+    df["anio"] = pd.to_numeric(df["anio"], errors="coerce")
+    df = df.dropna(subset=["codigo_dane", "anio"])
+    df["anio"] = df["anio"].astype(int)
+
+    with conectar() as c, c.cursor() as cur:
+        cur.execute("SELECT codigo_dane, id_municipio FROM cafe.dim_municipio")
+        muni_map = {r[0]: r[1] for r in cur.fetchall()}
+        # Auto-crear municipios faltantes (con dpto desde primer 2 dig DANE)
+        cur.execute("SELECT codigo_dane, id_departamento FROM cafe.dim_departamento")
+        dpto_map = {r[0]: r[1] for r in cur.fetchall()}
+
+        # Periodo = primer dia del año
+        cur.execute("SELECT fecha, id_periodo FROM cafe.dim_periodo")
+        per_map = {r[0]: r[1] for r in cur.fetchall()}
+
+        # Crear municipios faltantes en lote
+        nuevos_muni = []
+        for cod in df["codigo_dane"].unique():
+            if cod in muni_map:
+                continue
+            id_dpto = dpto_map.get(cod[:2])
+            if id_dpto is None:
+                continue
+            # Tomar nombre municipio del primer registro
+            sub = df[df["codigo_dane"] == cod]
+            nombre_mun = str(sub["municipio"].iloc[0])[:80] if "municipio" in sub.columns else f"Municipio {cod}"
+            nuevos_muni.append((cod, nombre_mun, id_dpto, None, None, None, None, None, None, None))
+
+        if nuevos_muni:
+            sql_m = """
+                INSERT INTO cafe.dim_municipio
+                  (codigo_dane, nombre, id_departamento, altitud_msnm, lat, lon,
+                   zona_cafetera, area_total_ha, soil_ph, soil_soc_pct)
+                VALUES %s
+                ON CONFLICT (codigo_dane) DO NOTHING
+            """
+            execute_values(cur, sql_m, nuevos_muni)
+            logger.info(f"  INFO  + {len(nuevos_muni)} municipios nuevos auto-creados")
+            # Refrescar map
+            cur.execute("SELECT codigo_dane, id_municipio FROM cafe.dim_municipio")
+            muni_map = {r[0]: r[1] for r in cur.fetchall()}
+
+        rows, sin_mun, sin_per = [], 0, 0
+        for r in df.itertuples():
+            id_mun = muni_map.get(r.codigo_dane)
+            id_per = per_map.get(date(int(r.anio), 1, 1))
+            if id_mun is None: sin_mun += 1; continue
+            if id_per is None: sin_per += 1; continue
+            rows.append((
+                id_mun, id_per, None,
+                _safe_num(getattr(r, "area_sembrada_ha", None)),
+                _safe_num(getattr(r, "area_cosechada_ha", None)),
+                _safe_num(getattr(r, "produccion_ton", None)),
+                _safe_num(getattr(r, "rendimiento_ton_ha", None)),
+                str(getattr(r, "estado_fisico", ""))[:30] or None,
+                "Permanente",
+                "EVA-Socrata",
+            ))
+
+        sql = """
+            INSERT INTO cafe.fact_produccion
+              (id_municipio, id_periodo, id_variedad, area_sembrada_ha,
+               area_cosechada_ha, produccion_ton, rendimiento_ton_ha,
+               estado_fisico, ciclo_cultivo, fuente)
+            VALUES %s
+        """
+        execute_values(cur, sql, rows)
+    logger.info(f"  OK {len(rows)} registros producción · sin_mun={sin_mun} sin_per={sin_per}")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  6. fact_imagen_enfermedad  ·  desde imagenes_validado.csv
+# ════════════════════════════════════════════════════════════════════════════
+def cargar_imagenes():
+    logger.info("\n  INFO [imagenes] cargando fact_imagen_enfermedad desde imagenes_validado.csv")
+    df = _read_csv(DIR_PROC / "imagenes_validado.csv")
+    if df is None:
+        return
+
+    with conectar() as c, c.cursor() as cur:
         cur.execute("SELECT nombre, id_enfermedad FROM cafe.dim_enfermedad")
         enf_map = {r[0]: r[1] for r in cur.fetchall()}
 
         rows = []
         for r in df.itertuples():
-            id_enf = enf_map.get(r.clase)
+            id_enf = enf_map.get(str(r.clase))
+            ruta = str(r.ruta)
+            nombre_arch = Path(ruta).name[:200]
             rows.append((
-                id_enf, r.ruta, Path(r.ruta).name, "hoja",
-                None, None, r.dataset_origen, None, None, r.split,
+                id_enf, ruta, nombre_arch, "hoja",
+                None, None, str(r.dataset_origen)[:20],
+                None, None, str(r.split)[:10],
             ))
+
         sql = """
             INSERT INTO cafe.fact_imagen_enfermedad
-            (id_enfermedad, ruta_archivo, nombre_archivo, parte_planta,
-             severidad_pct, nivel_severidad, fuente_dataset, resolucion_px,
-             variedad_cafe, split_modelo)
+              (id_enfermedad, ruta_archivo, nombre_archivo, parte_planta,
+               severidad_pct, nivel_severidad, fuente_dataset, resolucion_px,
+               variedad_cafe, split_modelo)
             VALUES %s
         """
-        execute_values(cur, sql, rows)
-    print(f"   ✓ {len(rows)} imágenes registradas")
+        # Insercion en chunks (manifest grande)
+        CHUNK = 5000
+        for i in range(0, len(rows), CHUNK):
+            execute_values(cur, sql, rows[i:i+CHUNK])
+        logger.info(f"  OK {len(rows)} imagenes registradas")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# 7. Refrescar vista materializada
-# ────────────────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+#  7. Refresh vista materializada
+# ════════════════════════════════════════════════════════════════════════════
 def refresh_vistas():
-    print("\n[vistas] refrescando vw_master_municipal_mensual ...")
-    with conn() as c, c.cursor() as cur:
+    logger.info("\n  INFO [vistas] refrescando vw_master_municipal_mensual")
+    with conectar() as c, c.cursor() as cur:
         cur.execute("REFRESH MATERIALIZED VIEW cafe.vw_master_municipal_mensual;")
-    print("   ✓ vista refrescada")
+    logger.info("  OK vista refrescada")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# Main
-# ────────────────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+#  MAIN
+# ════════════════════════════════════════════════════════════════════════════
+PASOS = {
+    "periodos":   cargar_periodos,
+    "oni":        actualizar_oni,
+    "municipios": cargar_municipios,
+    "clima":      cargar_clima,
+    "precios":    cargar_precios,
+    "produccion": cargar_produccion,
+    "imagenes":   cargar_imagenes,
+    "vistas":     refresh_vistas,
+}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--solo", nargs="+", default=None,
-        choices=["periodos","oni","municipios","eva","precios","imagenes","vistas"])
+    parser.add_argument("--solo", nargs="+", choices=list(PASOS.keys()))
+    parser.add_argument("--skip", nargs="+", default=[], choices=list(PASOS.keys()))
     parser.add_argument("--refresh-vistas", action="store_true")
     args = parser.parse_args()
 
-    print("=" * 70)
-    print(" Carga inicial — base cafe_ia")
-    print("=" * 70)
-    print(f"DB: {PG_CONFIG['user']}@{PG_CONFIG['host']}:{PG_CONFIG['port']}/{PG_CONFIG['dbname']}")
+    sel = args.solo or list(PASOS.keys())
+    sel = [s for s in sel if s not in args.skip]
+    if args.refresh_vistas and "vistas" not in sel:
+        sel.append("vistas")
 
-    # Probar conexión
+    logger.info(" =" * 70)
+    logger.info("  INFO  CARGA INICIAL · base cafe_ia")
+    logger.info(" =" * 70)
+    logger.info(f"  INFO DB: {PG_CONFIG['user']}@{PG_CONFIG['host']}:"
+                 f"  INFO {PG_CONFIG['port']}/{PG_CONFIG['dbname']}")
+    logger.info(f"  INFO Pasos: {sel}")
+
+    # Verificar conexion + schema
     try:
-        with conn() as c:
-            with c.cursor() as cur:
-                cur.execute("SELECT version();")
-                print(f"   ✓ Conectado · {cur.fetchone()[0][:40]}")
+        with conectar() as c, c.cursor() as cur:
+            cur.execute("SELECT version()")
+            ver = cur.fetchone()[0]
+            logger.info(f"  INFO Conectado · {ver[:60]}")
+            cur.execute("SELECT count(*) FROM information_schema.tables WHERE table_schema='cafe'")
+            n_tablas = cur.fetchone()[0]
+            if n_tablas == 0:
+                logger.error("  FAIL Schema 'cafe' vacio. Ejecuta primero:")
+                logger.error("  FAIL  psql -U postgres -d cafe_ia -f 01_ddl_schema.sql")
+                sys.exit(1)
+            logger.info(f"  INFO Schema cafe: {n_tablas} tablas presentes")
     except Exception as e:
-        print(f"\n✗ No se pudo conectar a PostgreSQL: {e}")
-        print("\n  Verifica:")
-        print("  1. PostgreSQL está corriendo")
-        print("  2. CREATE DATABASE cafe_ia;  (con: psql -U postgres)")
-        print("  3. psql -U postgres -d cafe_ia -f 01_ddl_schema.sql")
+        logger.error(f"  FAILConexion fallo: {e}")
         sys.exit(1)
 
-    sel = args.solo or ["periodos","oni","municipios","eva","precios","imagenes","vistas"]
+    for paso in sel:
+        try:
+            PASOS[paso]()
+        except Exception as e:
+            logger.error(f"  FAIL  paso '{paso}' fallo: {e}", exc_info=True)
 
-    if "periodos"   in sel: cargar_periodos()
-    if "oni"        in sel: actualizar_oni()
-    if "municipios" in sel: cargar_municipios()
-    if "eva"        in sel: cargar_eva()
-    if "precios"    in sel: cargar_precios()
-    if "imagenes"   in sel: cargar_imagenes()
-    if "vistas"     in sel or args.refresh_vistas:
-        refresh_vistas()
-
-    print("\n✓ Carga inicial completada")
+    logger.info("\n  INFO " + "=" * 70)
+    logger.info("  INFO  CARGA INICIAL COMPLETADA")
+    logger.info(" =" * 70)
 
 
 if __name__ == "__main__":

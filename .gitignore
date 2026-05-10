@@ -35,3 +35,17 @@ desktop.ini
 *.pkl
 *.h5
 *.tflite
+*.keras
+
+# Logs y reportes regenerables
+05_resultados/logs/
+05_resultados/figuras/
+05_resultados/tablas/
+05_resultados/reportes/
+01_datos/procesados/etl_reportes/
+
+# Vector store del RAG
+06_agente_rag/vectorstore/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
