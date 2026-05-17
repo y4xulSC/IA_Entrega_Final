@@ -13,7 +13,7 @@ PROJECT = Path(__file__).resolve().parents[2]
 # Centro Colombia
 CENTRO = [4.5, -74.0]
 
-# ─── Datos de municipios cafeteros (con coords del script descarga 05) ───
+# Datos de municipios cafeteros (con coords del script descarga 05)
 @st.cache_data
 def cargar_municipios():
     p1 = PROJECT / "01_datos" / "enriquecidos" / "geografia" / "dem_municipal_altitud.csv"
@@ -37,7 +37,7 @@ df = cargar_municipios()
 
 st.markdown(f"**Municipios cafeteros mapeados:** {len(df)}")
 
-# ─── Sidebar ───
+# Sidebar
 with st.sidebar:
     st.header("Filtros del mapa")
     deptos = sorted(df["departamento"].dropna().unique())
@@ -49,7 +49,7 @@ with st.sidebar:
         (1000, 2200))
     df = df[(df["altitud_msnm"] >= altitud_min) & (df["altitud_msnm"] <= altitud_max)]
 
-# ─── Construir mapa ───
+# Construir mapa
 m = folium.Map(location=CENTRO, zoom_start=6, tiles="OpenStreetMap")
 
 for _, r in df.iterrows():

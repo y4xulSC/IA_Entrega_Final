@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─── CSS personalizado ───
+# CSS personalizado
 CSS = """
 <style>
 .big-metric {font-size: 2.5em; color: #2E7D32; font-weight: 700;}
@@ -34,7 +34,7 @@ h2 {color: #4E342E;}
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ─── Header ───
+# Header
 col1, col2 = st.columns([1, 4])
 with col1:
     st.markdown("# ☕")
@@ -47,7 +47,7 @@ with col2:
 
 st.markdown("---")
 
-# ─── Hero / pitch ───
+# Hero / pitch
 st.markdown(
     """
     Este sistema integra **datos abiertos del agro colombiano** con **modelos
@@ -56,7 +56,7 @@ st.markdown(
     """
 )
 
-# ─── Métricas top ───
+# Métricas top
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.metric("Datasets integrados", "11", help="EVA, FNC, ICO, NOAA, IDEAM, Open-Meteo, FRED, World Bank, CALIBRO+RoCoLe+BRACOL+JMuBEN, SoilGrids, SRTM")
@@ -69,7 +69,7 @@ with c4:
 
 st.markdown("---")
 
-# ─── Módulos del sistema ───
+# Módulos del sistema
 st.subheader("🧩 Módulos disponibles")
 
 mods = [
@@ -91,7 +91,7 @@ for i, (titulo, desc, page) in enumerate(mods):
 
 st.markdown("---")
 
-# ─── Cobertura del syllabus ───
+# Cobertura del syllabus
 st.subheader("📚 Cobertura del syllabus")
 syllabus = {
     "Unidad I — Introducción a la IA": "Documento académico (Cap. 1) — riesgos y oportunidades para café colombiano",
@@ -104,7 +104,7 @@ for k, v in syllabus.items():
 
 st.markdown("---")
 
-# ─── Estado de los modelos ───
+# Estado de los modelos
 st.subheader("🎯 Estado de los modelos")
 
 models_status = {
@@ -124,7 +124,7 @@ st.dataframe(df_status, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
-# ─── Footer ───
+# Footer
 st.markdown(
     """
     <div style='text-align: center; color: #888; padding: 1em;'>

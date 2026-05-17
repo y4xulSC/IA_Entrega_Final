@@ -12,7 +12,7 @@ Estima el precio que podrías recibir por tu café según el **puntaje SCA**
 invertir en mejorar calidad vale la pena económicamente.
 """)
 
-# ─────────── Categorías SCA ───────────
+# Categorías SCA
 CATEGORIAS = [
     {"min": 0,  "max": 70, "nombre": "Comercial",    "factor": 0.95,
      "mercado": "Industria, café soluble, mezclas estándar",
@@ -39,7 +39,7 @@ def categorizar(sca: float) -> dict:
     return CATEGORIAS[-1]
 
 
-# ─────────── Inputs ───────────
+# Inputs
 col1, col2 = st.columns(2)
 
 with col1:
@@ -59,13 +59,13 @@ with col2:
         help="Consulta el precio de hoy en federaciondecafeteros.org")
     precio_base_kg = precio_base_carga / 125
 
-# ─────────── Cálculo ───────────
+# Cálculo
 cat = categorizar(sca)
 precio_kg = precio_base_kg * cat["factor"]
 total = precio_kg * cantidad_kg
 diferencia_vs_comercial = total - (precio_base_kg * 0.95 * cantidad_kg)
 
-# ─────────── Resultado ───────────
+# Resultado
 st.markdown("---")
 c1, c2, c3 = st.columns(3)
 with c1:
@@ -90,7 +90,7 @@ else:
     st.info("Para subir el puntaje SCA: cosecha selectiva (solo cereza roja), "
              "fermentación controlada, secado lento y limpio.")
 
-# ─────────── Tabla comparativa ───────────
+# Tabla comparativa
 st.markdown("---")
 st.subheader("Comparativa de categorías SCA")
 df = pd.DataFrame(CATEGORIAS)
