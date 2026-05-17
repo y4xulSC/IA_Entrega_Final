@@ -39,6 +39,11 @@ python rag_pipeline.py indexar
 
 # Hacer una pregunta
 python rag_pipeline.py preguntar -p "¿Qué efecto tiene El Niño sobre el café?"
+python rag_pipeline.py preguntar -p "Qué R² alcanzó el BiGRU en pronóstico de precios"
+python rag_pipeline.py preguntar -p "Cómo controlo la antracnosis en mi cafetal"
+python rag_pipeline.py preguntar -p "Qué variedades sembrar en Rionegro Antioquia"
+python rag_pipeline.py preguntar -p "Qué pasó con el café durante El Niño 2015"
+python rag_pipeline.py preguntar -p "Necesito GPU para correr el sistema"
 
 # Modo demo — 5 preguntas guionizadas
 python rag_pipeline.py demo
