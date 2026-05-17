@@ -11,7 +11,7 @@ Cubre **Unidad IV — PLN/Transformers** del syllabus.
 ## Instalación
 
 ```bash
-pip install langchain langchain-community langchain-groq sentence-transformers
+pip install langchain langchain-community langchain-groq sentence-transformers langchain-text-splitters
 pip install chromadb pypdf unstructured
 ```
 
