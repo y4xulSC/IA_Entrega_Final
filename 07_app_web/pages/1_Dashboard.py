@@ -12,7 +12,7 @@ st.title("📊 Dashboard Agroclimático del Café Colombia")
 PROJECT = Path(__file__).resolve().parents[2]
 DIR_DATOS = PROJECT / "01_datos"
 
-# ──────── Carga de datos ────────
+# Carga de datos
 @st.cache_data
 def cargar_master():
     """Intenta leer master_cafe_*.csv en orden de preferencia."""
@@ -36,7 +36,7 @@ if df is None:
 
 st.caption(f"Fuente: `{fuente.name}` · {len(df)} registros")
 
-# ──────── Filtros ────────
+# Filtros
 with st.sidebar:
     st.header("Filtros")
     if "anio" in df.columns:
@@ -53,7 +53,7 @@ with st.sidebar:
     elif "Dpto" in df.columns:
         df = df.rename(columns={"Dpto": "departamento"})
 
-# ──────── KPIs ────────
+# KPIs
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     if "produccion_ton" in df.columns:
@@ -73,7 +73,7 @@ with c4:
 
 st.markdown("---")
 
-# ──────── Gráficos ────────
+# Gráficos
 tab1, tab2, tab3 = st.tabs(["📈 Evolución", "🌡️ Clima", "💰 Precios"])
 
 if "anio" not in df.columns and "ano" not in df.columns:
@@ -133,7 +133,7 @@ with tab3:
                       title=f"Evolución de {col_p}", markers=True)
         st.plotly_chart(fig, use_container_width=True)
 
-# ──────── Análisis ENSO ────────
+# Análisis ENSO
 st.markdown("---")
 st.subheader("🌊 Impacto de ENSO en el rendimiento")
 

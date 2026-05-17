@@ -13,7 +13,7 @@ st.caption("Recordatorios mensuales · Alertas climáticas y de precio · Buenas
 PROJECT = Path(__file__).resolve().parents[2]
 DIR_PROC = PROJECT / "01_datos" / "procesados"
 
-# ─────────── Calendario agronómico mes-a-mes ───────────
+# Calendario agronómico mes-a-mes
 CALENDARIO = {
     1:  {"actividad": "Manejo de arvenses y planeación",
          "tareas": ["Plato limpio alrededor del tronco (40 cm radio)",
@@ -65,7 +65,7 @@ CALENDARIO = {
                     "Decidir qué lotes vender por SCA y cuáles por FNC"]},
 }
 
-# ─────────── Sidebar: datos del usuario ───────────
+# Sidebar: datos del usuario
 with st.sidebar:
     st.header("Tu finca")
     municipio = st.text_input("Municipio", value="Rionegro")
@@ -77,7 +77,7 @@ with st.sidebar:
                                 help="Rionegro Antioquia ≈ 2100 msnm")
     area_ha = st.number_input("Hectáreas de café", 0.1, 100.0, 2.0, 0.1)
 
-# ─────────── 1. Recordatorios del mes ───────────
+# 1. Recordatorios del mes
 mes_actual = datetime.now().month
 st.subheader(f"📅 Tareas de este mes ({datetime.now().strftime('%B %Y')})")
 info = CALENDARIO.get(mes_actual, {})
@@ -89,7 +89,7 @@ if mes_actual in (2, 5, 8, 11):
     st.warning(f"⚠ **Este es mes de fertilización.** Si no abonas ahora, "
                 f"perderás producción y aumentarás riesgo de enfermedades.")
 
-# ─────────── 2. Alerta climática y ENSO ───────────
+# 2. Alerta climática y ENSO
 st.markdown("---")
 st.subheader("🌦 Alerta climática")
 
@@ -133,7 +133,7 @@ if enso is not None and len(enso):
 else:
     st.info("Sin datos ENSO recientes. Ejecuta el pipeline ETL para actualizarlos.")
 
-# ─────────── 3. Alerta de precio ───────────
+# 3. Alerta de precio
 st.markdown("---")
 st.subheader("💰 Alerta de precio FNC")
 
@@ -170,7 +170,7 @@ if precios is not None and "precio_fnc_cop_kg" in precios.columns:
 else:
     st.info("Sin datos de precio cargados.")
 
-# ─────────── 4. Buenas prácticas según altitud ───────────
+# 4. Buenas prácticas según altitud
 st.markdown("---")
 st.subheader("📚 Recomendaciones para tu finca")
 

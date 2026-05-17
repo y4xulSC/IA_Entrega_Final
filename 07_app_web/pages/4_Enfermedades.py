@@ -17,7 +17,7 @@ Cercospora, Phoma, Miner, Sano**. La predicción incluye Grad-CAM para
 explicabilidad visual.
 """)
 
-# ─── Cargar modelo ───
+# Cargar modelo
 @st.cache_resource
 def cargar_modelo():
     try:
@@ -41,7 +41,7 @@ def cargar_modelo():
 
 modelo, nombre_modelo = cargar_modelo()
 
-# ─── Upload ───
+# Upload
 archivo = st.file_uploader("Selecciona una imagen", type=["jpg", "jpeg", "png"])
 
 if archivo:
@@ -109,7 +109,7 @@ if archivo:
 else:
     st.info("👆 Sube una imagen para empezar")
 
-# ─── Galería de ejemplos ───
+# Galería de ejemplos
 st.markdown("---")
 st.subheader("📸 Ejemplos del dataset CALIBRO (2da entrega)")
 ejemplos_dir = PROJECT.parent / "IA_Segunda_Entrega" / "datasets" / "calibro_imagenes"

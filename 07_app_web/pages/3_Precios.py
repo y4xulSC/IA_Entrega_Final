@@ -15,7 +15,7 @@ Pronóstico de precios FNC (interno) e ICO (internacional) usando modelos
 de **redes recurrentes profundas** entrenados con datos 1990-2026.
 """)
 
-# ─── Cargar histórico ───
+# Cargar histórico
 @st.cache_data
 def cargar_historico():
     candidatos = [
@@ -37,7 +37,7 @@ if df is None:
 
 st.caption(f"Fuente: `{fuente.name}` · {len(df)} obs · {df.fecha.min().date()} → {df.fecha.max().date()}")
 
-# ─── Detectar columna de precio ───
+# Detectar columna de precio
 candidatos_precio = [c for c in df.columns if "precio" in c.lower() and df[c].notna().sum() > 50]
 if not candidatos_precio:
     st.error("No se encontró columna de precio.")
@@ -50,7 +50,7 @@ with st.sidebar:
     modelo_sel = st.selectbox("Modelo",
         ["BiGRU (recomendado)", "LSTM apilada", "LSTM + Atención", "Transformer", "Naive (benchmark)"])
 
-# ─── Mostrar serie ───
+# Mostrar serie
 serie = df[["fecha", col_precio]].dropna()
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=serie.fecha, y=serie[col_precio],
@@ -60,22 +60,11 @@ fig.update_layout(title=f"Histórico de {col_precio}",
                    height=400)
 st.plotly_chart(fig, use_container_width=True)
 
-# ─── Forecast ───
+# Forecast
 if st.button("📈 Generar pronóstico", type="primary"):
     # Naive baseline + ruido para demo (en producción usar el modelo .keras real)
     last = float(serie[col_precio].iloc[-1])
     ult_fecha = serie.fecha.iloc[-1]
-
-    # Tendencia simple
-    # diff = float(serie[col_precio].diff().tail(12).mean())
-    # fechas_fc = pd.date_range(ult_fecha + pd.DateOffset(months=1),
-    #                             periods=horizonte, freq="MS")
-    # pred = [last + diff * (i+1) for i in range(horizonte)]
-# 
-    # # Intervalos por MC-Dropout simulados
-    # sigma = float(serie[col_precio].diff().tail(12).std())
-    # lo = [p - 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
-    # hi = [p + 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
     
     # Pronóstico simulado más realista para la interfaz
     last = float(serie[col_precio].iloc[-1])

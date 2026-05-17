@@ -14,7 +14,7 @@ Pregunta al sistema sobre clima, precios, enfermedades, modelos, datos integrado
 El asistente usa **RAG (Retrieval Augmented Generation)** con embeddings locales y un LLM gratis.
 """)
 
-# ─── Cargar agente ───
+# Cargar agente
 @st.cache_resource
 def cargar_agente():
     try:
@@ -39,7 +39,7 @@ if err:
     """)
     st.stop()
 
-# ─── Verificar índice ───
+# Verificar índice
 try:
     vs = agente._get_vectorstore()
     n_docs = vs._collection.count()
@@ -53,7 +53,7 @@ try:
 except Exception as e:
     st.warning(f"No se pudo verificar el índice: {e}")
 
-# ─── Estado de la conversación ───
+# Estado de la conversación
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content":
@@ -62,12 +62,12 @@ if "messages" not in st.session_state:
          "Por ejemplo: *¿Qué efecto tiene El Niño sobre el rendimiento?*"}
     ]
 
-# ─── Mostrar historia ───
+# Mostrar historia
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-# ─── Input ───
+# Input
 if pregunta := st.chat_input("Escribe tu pregunta..."):
     st.session_state.messages.append({"role": "user", "content": pregunta})
     with st.chat_message("user"):
@@ -82,7 +82,7 @@ if pregunta := st.chat_input("Escribe tu pregunta..."):
             except Exception as e:
                 st.error(f"Error: {e}")
 
-# ─── Sugerencias ───
+# Sugerencias
 st.markdown("---")
 st.subheader("💡 Preguntas sugeridas")
 sugerencias = [

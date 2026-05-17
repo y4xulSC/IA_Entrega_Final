@@ -17,7 +17,7 @@ El modelo se entrenó con datos de 8 departamentos cafeteros 2019–2024 y se
 mejora en la entrega final con datos municipales.
 """)
 
-# ──────── Inputs ────────
+# Inputs
 with st.sidebar:
     st.header("Variables de entrada")
     temp_media = st.slider("Temperatura media (°C)", 14.0, 28.0, 21.0, 0.5)
@@ -32,7 +32,7 @@ with st.sidebar:
     dpto = st.selectbox("Departamento", ["Huila", "Antioquia", "Nariño",
         "Caldas", "Tolima", "Quindio", "Risaralda", "Santander", "Cauca"])
 
-# ──────── Cargar modelo ────────
+# Cargar modelo
 @st.cache_resource
 def cargar_modelo():
     candidatos = [
@@ -52,7 +52,7 @@ def cargar_modelo():
 
 modelo, nombre = cargar_modelo()
 
-# ──────── Predicción ────────
+# Predicción
 if st.button("🔮 Predecir rendimiento", type="primary"):
     # Vector de features simplificado (en producción ajustar al pipeline real)
     enso_int = abs(oni) if oni > 0.5 or oni < -0.5 else 0
