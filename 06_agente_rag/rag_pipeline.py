@@ -31,8 +31,11 @@ import json
 from pathlib import Path
 from typing import Optional, List
 from datetime import datetime
+from dotenv import load_dotenv, find_dotenv
 
-# ──────── rutas ────────
+load_dotenv(find_dotenv())
+
+# rutas
 HERE = Path(__file__).resolve()
 PROJECT = HERE.parents[1]
 DOCS_DIR = HERE.parent / "documentos_fuente"
@@ -40,15 +43,15 @@ VECTOR_DIR = HERE.parent / "vectorstore"
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 VECTOR_DIR.mkdir(parents=True, exist_ok=True)
 
-
 class RAGAgent:
     """Agente RAG con backend local (sentence-transformers + ChromaDB) y LLM remoto/local."""
 
     def __init__(self,
-                 embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-                 llm_provider: str = "groq",
-                 llm_model: str = "llama-3.1-70b-versatile",
-                 collection_name: str = "cafe_ia"):
+                embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+                llm_provider: str = "groq",
+                # llm_model: str = "llama-3.3-70b-versatile", # Modelo grande
+                llm_model: str = "llama-3.1-8b-instant", # Modelo recomendado para pruebas locales (Ollama) o Groq gratis
+                collection_name: str = "cafe_ia"):
         self.embedding_model_name = embedding_model
         self.llm_provider = llm_provider
         self.llm_model = llm_model
@@ -56,19 +59,21 @@ class RAGAgent:
         self._vectorstore = None
         self._llm = None
 
-    # ──────── embeddings ────────
+    # embeddings
     def _get_embeddings(self):
-        from langchain_community.embeddings import HuggingFaceEmbeddings
+        #from langchain_community.embeddings import HuggingFaceEmbeddings
+        from langchain_huggingface import HuggingFaceEmbeddings
         return HuggingFaceEmbeddings(
             model_name=self.embedding_model_name,
             model_kwargs={"device": "cpu"},
         )
 
-    # ──────── vector store ────────
+    # vector store
     def _get_vectorstore(self):
         if self._vectorstore is not None:
             return self._vectorstore
-        from langchain_community.vectorstores import Chroma
+        #from langchain_community.vectorstores import Chroma
+        from langchain_chroma import Chroma
         self._vectorstore = Chroma(
             collection_name=self.collection_name,
             embedding_function=self._get_embeddings(),
@@ -76,7 +81,7 @@ class RAGAgent:
         )
         return self._vectorstore
 
-    # ──────── LLM ────────
+    # LLM
     def _get_llm(self):
         if self._llm is not None:
             return self._llm
@@ -87,6 +92,7 @@ class RAGAgent:
                 if not key:
                     print("[!] GROQ_API_KEY no definida — usando Ollama local")
                     return self._get_llm_ollama()
+                print(f"[LLM] Conectando a Groq (Modelo: {self.llm_model})...")
                 self._llm = ChatGroq(
                     api_key=key,
                     model_name=self.llm_model,
@@ -102,23 +108,25 @@ class RAGAgent:
         try:
             from langchain_community.llms import Ollama
             host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+            print(f"[LLM] Conectando a Ollama local en {host}...")
             self._llm = Ollama(base_url=host, model="llama3.1:8b", temperature=0.3)
             return self._llm
         except Exception as e:
             print(f"[!] Ollama no disponible: {e}")
             return None
 
-    # ──────── indexación ────────
+    # indexación
     def indexar(self, force: bool = False):
         """Indexa todos los documentos en documentos_fuente/."""
         from langchain_community.document_loaders import (
-            PyPDFLoader, TextLoader, CSVLoader, UnstructuredMarkdownLoader,
+            PyPDFLoader, TextLoader, CSVLoader
         )
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
 
         vs = self._get_vectorstore()
-        if not force and vs._collection.count() > 0:
-            print(f"[indexar] Ya hay {vs._collection.count()} documentos.")
+        count = vs._collection.count()
+        if not force and count > 0:
+            print(f"[indexar] Ya hay {count} chunks indexados en ChromaDB.")
             print("           Usa force=True para reindexar.")
             return
 
@@ -130,9 +138,7 @@ class RAGAgent:
             try:
                 if suf == ".pdf":
                     docs = PyPDFLoader(str(archivo)).load()
-                elif suf in (".md", ".markdown"):
-                    docs = UnstructuredMarkdownLoader(str(archivo)).load()
-                elif suf in (".txt", ""):
+                elif suf in (".md", ".markdown", ".txt", ""):
                     docs = TextLoader(str(archivo), encoding="utf-8").load()
                 elif suf == ".csv":
                     docs = CSVLoader(str(archivo)).load()
@@ -141,9 +147,9 @@ class RAGAgent:
                 for d in docs:
                     d.metadata["origen"] = str(archivo.relative_to(DOCS_DIR))
                 documentos.extend(docs)
-                print(f"   ✓ {archivo.name}: {len(docs)} chunks")
+                print(f"   [OK] {archivo.name}: {len(docs)} chunks")
             except Exception as e:
-                print(f"   ✗ {archivo.name}: {e}")
+                print(f"   [FAIL] {archivo.name}: {e}")
 
         if not documentos:
             print("\n[!] Sin documentos. Coloca PDFs/MD/TXT en documentos_fuente/")
@@ -159,8 +165,7 @@ class RAGAgent:
         print(f"\n   total chunks: {len(chunks)}")
 
         vs.add_documents(chunks)
-        vs.persist() if hasattr(vs, "persist") else None
-        print(f"✓ {len(chunks)} chunks indexados en {VECTOR_DIR}")
+        print(f"  [OK] {len(chunks)} chunks indexados en {VECTOR_DIR}")
 
     def _cargar_documentos_demo(self):
         """Crea documentos de demo si no hay nada en documentos_fuente."""
@@ -169,9 +174,15 @@ class RAGAgent:
         print(f"   → Demo creado: {demo_path}")
         self.indexar(force=True)
 
-    # ──────── consulta ────────
+    # consulta
     def preguntar(self, pregunta: str, k: int = 4) -> str:
-        from langchain.prompts import PromptTemplate
+        # from langchain.prompts import PromptTemplate
+        # from langchain.prompts import ChatPromptTemplate
+        # from langchain.schema.runnable import RunnablePassthrough
+        # from langchain.schema.output_parser import StrOutputParser
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.runnables import RunnablePassthrough
+        from langchain_core.output_parsers import StrOutputParser
 
         vs = self._get_vectorstore()
         llm = self._get_llm()
@@ -179,27 +190,29 @@ class RAGAgent:
         docs = vs.similarity_search(pregunta, k=k)
         contexto = "\n\n".join([f"[{d.metadata.get('origen','?')}]\n{d.page_content}"
                                 for d in docs])
-        prompt = PromptTemplate.from_template(
-            "Eres un asistente experto en café colombiano. Responde EN ESPAÑOL "
-            "de forma concisa y citando las fuentes.\n\n"
-            "Contexto:\n{contexto}\n\n"
-            "Pregunta: {pregunta}\n\n"
-            "Respuesta:")
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "Eres un asistente experto en café colombiano. Responde EN ESPAÑOL "
+                       "de forma concisa y técnica. "
+                       "Utiliza ÚNICAMENTE el contexto proporcionado para responder. "
+                       "Si la respuesta no está en el contexto, di que no tienes información suficiente. "
+                       "Siempre menciona la [Fuente] al final de tu respuesta basándote en el contexto.\n\n"
+                       "CONTEXTO RECUPERADO:\n{contexto}"),
+            ("human", "{pregunta}")
+        ])
         if llm is None:
             # Fallback: solo recuperación
             return ("[Sin LLM disponible — solo retrieval]\n" +
                     f"\nFragmentos relevantes:\n\n{contexto[:2000]}")
 
-        chain = prompt | llm
+        chain = ({"contexto": lambda x: contexto, "pregunta": RunnablePassthrough()} | prompt | llm | StrOutputParser())
         try:
-            return chain.invoke({"contexto": contexto, "pregunta": pregunta}).content \
-                   if hasattr(chain.invoke({"contexto": contexto, "pregunta": pregunta}), 'content') \
-                   else str(chain.invoke({"contexto": contexto, "pregunta": pregunta}))
+            respuesta = chain.invoke(pregunta)
+            return respuesta
         except Exception as e:
             return f"Error: {e}"
 
 
-# ──────── texto demo ────────
+# texto demo
 _TEXTO_DEMO = """# Conocimiento base · Sistema IA Café Colombia
 
 ## El Niño y rendimiento
@@ -262,7 +275,7 @@ NB07-NB12 son la entrega final con datos ampliados.
 """
 
 
-# ────────── CLI ──────────
+# CLI
 def main():
     import argparse
     parser = argparse.ArgumentParser()
