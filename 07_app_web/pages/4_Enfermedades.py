@@ -49,25 +49,32 @@ if archivo:
     col1, col2 = st.columns([1, 1])
     with col1:
         st.subheader("Imagen original")
-        st.image(img, use_column_width=True)
+        #st.image(img, use_column_width=True)
+        st.image(img, use_container_width=True)
 
     with col2:
         st.subheader("Análisis del modelo")
         if modelo is not None:
             try:
                 import tensorflow as tf
-                from tensorflow.keras.applications.efficientnet import preprocess_input
+                # from tensorflow.keras.applications.efficientnet import preprocess_input
                 target_size = (224, 224)
                 img_r = img.resize(target_size)
                 arr = np.array(img_r, dtype=np.float32)
-                arr = preprocess_input(arr)
+                # arr = preprocess_input(arr)
+                arr = arr / 255.0  # Normalización simple
                 arr = np.expand_dims(arr, 0)
 
-                pred = modelo.predict(arr, verbose=0)[0]
-                clases = ["Cercospora", "Gotera", "Miner", "Phoma", "Roya", "Sano"]
-                if len(pred) != len(clases):
-                    # Adaptar a la 2da entrega (4 clases severidad)
-                    clases = ["Sin enfermedad", "Bajo", "Medio", "Alto"][:len(pred)]
+                # pred = modelo.predict(arr, verbose=0)[0]
+                predicciones = modelo.predict(arr, verbose=0)
+                # Como el modelo devuelve [Probabilidades_Clases, Severidad], tomamos [0][0]
+                pred = predicciones[0][0]
+                clases = ["Cercospora", "Gotera", "Miner", "Phoma", "Roya", "Sano", "SpiderMite"]
+                # NOTA: La logica que adaptamos y esta en cnn_cafe_best.keras ya no predice la severidad confiable, solo la clase. 
+                # Por eso se ignora el tema de las 4 clases de severidad y se asume que el modelo ya predice la clase final.
+                # if len(pred) != len(clases):
+                #     # Adaptar a la 2da entrega (4 clases severidad)
+                #     clases = ["Sin enfermedad", "Bajo", "Medio", "Alto"][:len(pred)]
                 idx = int(np.argmax(pred))
                 conf = float(pred[idx])
 

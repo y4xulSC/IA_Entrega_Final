@@ -74,26 +74,48 @@ with c4:
 st.markdown("---")
 
 # ──────── Gráficos ────────
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Evolución", "🌡️ Clima", "💰 Precios", "🌎 Geografía"])
+tab1, tab2, tab3 = st.tabs(["📈 Evolución", "🌡️ Clima", "💰 Precios"])
+
+if "anio" not in df.columns and "ano" not in df.columns:
+    for f_col in ["fecha", "Fecha", "date", "Date"]:
+        if f_col in df.columns:
+            df["anio"] = pd.to_datetime(df[f_col], errors="coerce").dt.year
+            break
+col_anio = "anio" if "anio" in df.columns else ("ano" if "ano" in df.columns else None)
+col_rend = next((c for c in df.columns if "rendimiento" in c.lower()), None)
+col_prod = next((c for c in df.columns if "produccion" in c.lower() or "prod" in c.lower()), None)
+col_enso = next((c for c in df.columns if "enso" in c.lower() or "nino" in c.lower() or "nina" in c.lower()), None)
 
 with tab1:
-    if "produccion_ton" in df.columns and "anio" in df.columns:
-        df_evo = df.groupby("anio")["produccion_ton"].sum().reset_index()
-        fig = px.line(df_evo, x="anio", y="produccion_ton",
-                      title="Producción nacional de café por año",
+    col_prod = next((c for c in df.columns if "produccion" in c.lower() or "prod" in c.lower()), None)
+    if col_prod and col_anio:
+        df_evo = df.groupby(col_anio)[col_prod].sum().reset_index()
+        fig = px.line(df_evo, x=col_anio, y=col_prod,
+                      title="Producción de café por año",
                       markers=True)
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No se encontró columna de 'producción' o 'año' en el dataset.")
 
-    if "rendimiento_ton_ha" in df.columns:
-        col_dpto = "departamento" if "departamento" in df.columns else None
-        if col_dpto:
-            fig2 = px.box(df, x=col_dpto, y="rendimiento_ton_ha",
-                          title="Distribución de rendimiento por departamento")
-            st.plotly_chart(fig2, use_container_width=True)
+    col_rend = next((c for c in df.columns if "rendimiento" in c.lower()), None)
+    col_dpto = next((c for c in df.columns if "departamento" in c.lower() or "dpto" in c.lower()), None)
+    if col_rend and col_dpto:
+        fig2 = px.box(df, x=col_dpto, y=col_rend,
+                      title="Distribución de rendimiento por departamento")
+        st.plotly_chart(fig2, use_container_width=True)
+        
+    col_dpto = next((c for c in df.columns if "departamento" in c.lower() or "dpto" in c.lower()), None)
+    metrica_box = col_rend if col_rend else col_prod
+    
+    if metrica_box and col_dpto:
+        fig2 = px.box(df, x=col_dpto, y=metrica_box,
+                      title=f"Distribución de {metrica_box} por departamento")
+        st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("Faltan datos de departamento o métrica agrícola para la distribución.")
 
 with tab2:
-    cols_clima = [c for c in df.columns if any(s in c.lower()
-                  for s in ["temp", "precip", "et0", "ndvi"])]
+    cols_clima = [c for c in df.columns if any(s in c.lower() for s in ["temp", "precip", "et0", "ndvi"])]
     if cols_clima:
         col_sel = st.selectbox("Variable climática", cols_clima)
         if "anio" in df.columns:
@@ -111,30 +133,19 @@ with tab3:
                       title=f"Evolución de {col_p}", markers=True)
         st.plotly_chart(fig, use_container_width=True)
 
-with tab4:
-    if "departamento" in df.columns and "produccion_ton" in df.columns:
-        df_geo = df.groupby("departamento")["produccion_ton"].sum().reset_index()
-        df_geo = df_geo.sort_values("produccion_ton", ascending=True).tail(15)
-        fig = px.bar(df_geo, y="departamento", x="produccion_ton",
-                     orientation="h", title="Top 15 departamentos productores")
-        st.plotly_chart(fig, use_container_width=True)
-
 # ──────── Análisis ENSO ────────
 st.markdown("---")
 st.subheader("🌊 Impacto de ENSO en el rendimiento")
 
-if "fase_enso" in df.columns and "rendimiento_ton_ha" in df.columns:
-    df_enso = df.groupby("fase_enso")["rendimiento_ton_ha"].agg(["mean", "std", "count"]).reset_index()
-    fig_enso = px.bar(df_enso, x="fase_enso", y="mean",
-                       error_y="std",
-                       title="Rendimiento promedio por fase ENSO")
-    st.plotly_chart(fig_enso, use_container_width=True)
-    st.dataframe(df_enso, hide_index=True)
-elif "es_El_Nino" in df.columns:
-    df["fase_calc"] = df.apply(lambda r:
-        "Nino" if r.get("es_El_Nino", 0) else
-        "Nina" if r.get("es_La_Nina", 0) else "Neutro", axis=1)
-    df_enso = df.groupby("fase_calc")["rendimiento_ton_ha"].mean().reset_index()
-    fig_enso = px.bar(df_enso, x="fase_calc", y="rendimiento_ton_ha",
-                       title="Rendimiento por fase ENSO")
-    st.plotly_chart(fig_enso, use_container_width=True)
+if col_enso:
+    metrica_enso = col_rend if col_rend else col_prod
+    
+    if metrica_enso:
+        df_enso = df.groupby(col_enso)[metrica_enso].mean().reset_index()
+        fig_enso = px.bar(df_enso, x=col_enso, y=metrica_enso,
+                          title=f"Promedio de {metrica_enso} por fase climática (ENSO)")
+        st.plotly_chart(fig_enso, use_container_width=True)
+    else:
+        st.info("No se encontró variable de producción o rendimiento para comparar con ENSO.")
+else:
+    st.info("No se encontró información sobre el fenómeno ENSO en este dataset.")

@@ -67,15 +67,37 @@ if st.button("📈 Generar pronóstico", type="primary"):
     ult_fecha = serie.fecha.iloc[-1]
 
     # Tendencia simple
-    diff = float(serie[col_precio].diff().tail(12).mean())
-    fechas_fc = pd.date_range(ult_fecha + pd.DateOffset(months=1),
-                                periods=horizonte, freq="MS")
-    pred = [last + diff * (i+1) for i in range(horizonte)]
+    # diff = float(serie[col_precio].diff().tail(12).mean())
+    # fechas_fc = pd.date_range(ult_fecha + pd.DateOffset(months=1),
+    #                             periods=horizonte, freq="MS")
+    # pred = [last + diff * (i+1) for i in range(horizonte)]
+# 
+    # # Intervalos por MC-Dropout simulados
+    # sigma = float(serie[col_precio].diff().tail(12).std())
+    # lo = [p - 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
+    # hi = [p + 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
+    
+    # Pronóstico simulado más realista para la interfaz
+    last = float(serie[col_precio].iloc[-1])
+    ult_fecha = serie.fecha.iloc[-1]
 
-    # Intervalos por MC-Dropout simulados
-    sigma = float(serie[col_precio].diff().tail(12).std())
-    lo = [p - 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
-    hi = [p + 1.65 * sigma * np.sqrt(i+1) for i, p in enumerate(pred)]
+    # Capturar la tendencia real de los últimos 3 meses
+    tendencia_reciente = serie[col_precio].diff().tail(3).mean()
+    volatilidad = float(serie[col_precio].diff().tail(12).std())
+
+    fechas_fc = pd.date_range(ult_fecha + pd.DateOffset(months=1), periods=horizonte, freq="MS")
+    
+    # Generar curva con tendencia amortiguada y ligero ruido
+    pred = []
+    precio_actual = last
+    for i in range(horizonte):
+        # La tendencia se amortigua en el tiempo (para no ir a infinito)
+        precio_actual += tendencia_reciente * (0.8 ** i) 
+        pred.append(precio_actual)
+
+    # Intervalos (IC 90%) crecientes
+    lo = [p - 1.65 * volatilidad * np.sqrt(i+1) for i, p in enumerate(pred)]
+    hi = [p + 1.65 * volatilidad * np.sqrt(i+1) for i, p in enumerate(pred)]
 
     # Plot histórico + pronóstico
     fig2 = go.Figure()

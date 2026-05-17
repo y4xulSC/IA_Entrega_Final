@@ -63,15 +63,33 @@ if st.button("🔮 Predecir rendimiento", type="primary"):
     if modelo is not None:
         try:
             # Feature vector — el shape exacto depende del modelo entrenado
+            mes_actual = pd.Timestamp.now().month
             X = pd.DataFrame([{
-                "Anio": 2024, "Area_sembrada": area, "Area_cosechada": area*0.95,
+                "mes": mes_actual,
+                "ano": 2026,
+                "departamento": dpto,
+                "altitud_msnm": altitud,
+                "fase_enso": "El Nino" if es_nino else ("La Nina" if es_nina else "Neutro"),
+                "temp_med_c": temp_media,
+                "precip_mm": precip,
+                "area_sembrada_ha": area,
+                "precio_fnc_cop_carga": precio_fnc,
+                "oni_index": oni,
+                "Area_sembrada": area,
+                "Area_cosechada": area*0.95,
                 "Produccion_ton": area*1.0,
-                "Temp_media_sem": temp_media, "Temp_min_sem": temp_min,
-                "Temp_max_sem": temp_max, "Precip_total_sem": precip,
-                "ONI_media": oni, "ENSO_intensidad": enso_int,
-                "es_El_Nino": es_nino, "es_La_Nina": es_nina,
-                "Estres_hidrico": estres_hidrico, "Amplitud_termica": amplitud_term,
-                "Precio_interno_cop": precio_fnc, "Precio_interno_cop_lag1": precio_fnc,
+                "Temp_media_sem": temp_media,
+                "Temp_min_sem": temp_min,
+                "Temp_max_sem": temp_max,
+                "Precip_total_sem": precip,
+                "ONI_media": oni,
+                "ENSO_intensidad": enso_int,
+                "es_El_Nino": es_nino,
+                "es_La_Nina": es_nina,
+                "Estres_hidrico": estres_hidrico,
+                "Amplitud_termica": amplitud_term,
+                "Precio_interno_cop": precio_fnc,
+                "Precio_interno_cop_lag1": precio_fnc,
             }])
             pred = float(modelo.predict(X)[0]) if hasattr(modelo, "predict") else None
         except Exception as e:
@@ -88,7 +106,7 @@ if st.button("🔮 Predecir rendimiento", type="primary"):
             base *= 1 + 0.10 * min(0, (precip - 1500) / 1500)  # déficit hídrico
             pred = max(0.1, base)
     else:
-        st.warning("⚠ Sin modelo entrenado disponible — usando heurística")
+        st.warning(" Sin modelo entrenado disponible — usando heurística")
         pred = 1.0 * (1 - 0.24 * es_nino) * (1 - 0.12 * es_nina)
 
     # Mostrar resultado

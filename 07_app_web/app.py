@@ -6,7 +6,7 @@
 
  Ejecutar:
    cd 07_app_web
-   streamlit run app.py
+   python -m streamlit run app.py
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -109,14 +109,14 @@ st.subheader("🎯 Estado de los modelos")
 
 models_status = {
     "Modelo": ["ML Precio (Ridge)", "ML Rendimiento (Stacking)", "MLP Profundo",
-               "BiGRU Series Tiempo", "Transformer", "CNN EfficientNetB0",
-               "Autoencoder Anomalías", "Agente RAG"],
-    "Estado 2da entrega": ["R²=0.945 ✓", "R²=0.067 ⚠", "—",
-                            "R²=−2.12 ✗", "—", "Acc=48.9% ✗",
+               "BiGRU Series Tiempo", "Transformer", "CNN MobileNetV2",
+               "Autoencoder Anomalías", "Agente RAG (Groq+Llama3.1)"],
+    "Estado 2da entrega": ["R²=0.945", "R²=0.067", "—",
+                            "R²=−2.12", "—", "Acc=48.9%",
                             "—", "—"],
-    "Estado entrega final": ["R²=0.945+ ✓", "R²>0.5 esperado", "Implementado",
-                              "R²>0.5 esperado", "Implementado", "Acc>85% esperado",
-                              "Implementado", "Funcional"],
+    "Estado entrega final": ["R²=0.945+", "R²>0.5 esperado", "Implementado",
+                              "R²>0.5 esperado", "Implementado", "Acc=81.9%, F1=82.7%",
+                              "Implementado", "Funcional y Rápido"],
 }
 import pandas as pd
 df_status = pd.DataFrame(models_status)
