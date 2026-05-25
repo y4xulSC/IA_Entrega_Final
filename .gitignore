@@ -2,17 +2,27 @@
 .env
 **/.env
 *.env.local
+06_agente_rag/.env
+07_app_web/.env
 
 # Kaggle credentials
 kaggle.json
 .kaggle/
 
 # Datos crudos pesados
+01_datos/imagenes_cafe/
+01_datos/raw/
+01_datos/originales/
+01_datos/enriquecidos/
 01_datos/imagenes_cafe/raw/
 01_datos/imagenes_cafe/train/
 01_datos/imagenes_cafe/val/
 01_datos/imagenes_cafe/test/
 *.zip
+
+# Ignorar modelos súper pesados (solo dejaremos los .keras y .pkl finales)
+*.h5
+*.tflite
 
 # Python
 __pycache__/
@@ -33,9 +43,11 @@ desktop.ini
 
 # Outputs grandes
 *.pkl
-*.h5
-*.tflite
 *.keras
+
+# EXCLUIR los que estén en la carpeta final de modelos
+!04_modelos_entrenados/*.keras
+!04_modelos_entrenados/*.pkl
 
 # Logs y reportes regenerables
 05_resultados/logs/
@@ -49,3 +61,6 @@ desktop.ini
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Ignorar checkpoints temporales
+04_modelos_entrenados/checkpoints/

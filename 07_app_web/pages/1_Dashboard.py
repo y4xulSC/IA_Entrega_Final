@@ -19,8 +19,8 @@ def cargar_master():
     candidatos = [
         DIR_DATOS / "procesados" / "master_cafe_municipal_mensual.csv",
         DIR_DATOS / "procesados" / "master_cafe_mensual.csv",
-        PROJECT.parent / "IA_Segunda_Entrega" / "datasets" / "master_cafe_mensual.csv",
-        PROJECT.parent / "IA_Segunda_Entrega" / "datasets" / "master_cafe_semestral.csv",
+        DIR_DATOS / "originales" / "otros" / "master_cafe_mensual.csv",
+        DIR_DATOS / "originales" / "otros" / "master_cafe_semestral.csv",
     ]
     for p in candidatos:
         if p.exists():

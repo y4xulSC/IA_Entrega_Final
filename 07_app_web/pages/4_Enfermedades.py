@@ -23,21 +23,20 @@ def cargar_modelo():
     try:
         import tensorflow as tf
     except ImportError:
+        st.error(" [ERROR] TensorFlow no está instalado en este entorno.")
         return None, None
 
-    candidatos = [
-        DIR_MOD / "cnn_cafe_best.keras",
-        DIR_MOD / "modelo_cnn_clasificacion_cafe.keras",
-        PROJECT.parent / "IA_Segunda_Entrega" / "outputs" / "modelos" / "modelo_cnn_clasificacion_cafe.keras",
-    ]
-    for p in candidatos:
-        if p.exists():
-            try:
-                m = tf.keras.models.load_model(p)
-                return m, p.name
-            except Exception:
-                continue
-    return None, None
+    modelo_path = DIR_MOD / "cnn_cafe_best.keras"
+    if not modelo_path.exists():
+        st.error(f"  [ERROR] Modelo no encontrado en `{modelo_path}`.")
+        return None, None
+    
+    try:
+        m = tf.keras.models.load_model(modelo_path, compile=False)
+        return m, modelo_path.name
+    except Exception as e:
+        st.error(f"  [ERROR] Error al cargar el modelo: {e}")
+        return None, None
 
 modelo, nombre_modelo = cargar_modelo()
 
@@ -67,8 +66,11 @@ if archivo:
 
                 # pred = modelo.predict(arr, verbose=0)[0]
                 predicciones = modelo.predict(arr, verbose=0)
-                # Como el modelo devuelve [Probabilidades_Clases, Severidad], tomamos [0][0]
-                pred = predicciones[0][0]
+                # Si predicciones es una lista (ej. [pred_clase, pred_severidad]), tomar la primera parte para clasificación
+                if isinstance(predicciones, list):
+                    pred = predicciones[0][0]
+                else:
+                    pred = predicciones[0]
                 clases = ["Cercospora", "Gotera", "Miner", "Phoma", "Roya", "Sano", "SpiderMite"]
                 # NOTA: La logica que adaptamos y esta en cnn_cafe_best.keras ya no predice la severidad confiable, solo la clase. 
                 # Por eso se ignora el tema de las 4 clases de severidad y se asume que el modelo ya predice la clase final.
@@ -84,7 +86,8 @@ if archivo:
                 import pandas as pd
                 df_p = pd.DataFrame({"clase": clases, "prob": pred})\
                         .sort_values("prob", ascending=False)
-                st.dataframe(df_p, hide_index=True, use_container_width=True)
+                #st.dataframe(df_p, hide_index=True, use_container_width=True)
+                st.dataframe(df_p, hide_index=True, width="stretch")
 
                 # Recomendación
                 if "Roya" in clases[idx]:
@@ -112,13 +115,14 @@ else:
 # Galería de ejemplos
 st.markdown("---")
 st.subheader("📸 Ejemplos del dataset CALIBRO (2da entrega)")
-ejemplos_dir = PROJECT.parent / "IA_Segunda_Entrega" / "datasets" / "calibro_imagenes"
+ejemplos_dir = PROJECT / "01_datos" / "imagenes_cafe" / "val" / "Gotera"
 if ejemplos_dir.exists():
     imgs = list(ejemplos_dir.glob("*.png"))[:6] + list(ejemplos_dir.glob("*.jpeg"))[:6]
     cols = st.columns(min(6, len(imgs)))
     for i, ej in enumerate(imgs[:6]):
         with cols[i]:
             try:
-                st.image(str(ej), caption=ej.stem[:20], use_column_width=True)
+                # st.image(str(ej), caption=ej.stem[:20], use_column_width=True)
+                st.image(str(ej), caption=ej.stem[:20], use_container_width=True)
             except Exception:
                 pass

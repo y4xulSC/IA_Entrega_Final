@@ -35,19 +35,14 @@ with st.sidebar:
 # Cargar modelo
 @st.cache_resource
 def cargar_modelo():
-    candidatos = [
-        DIR_MOD / "ml_municipal_rendimiento.pkl",
-        DIR_MOD / "modelo_xgb_tuned_rendimiento.pkl",
-        DIR_MOD / "modelo_ml_rendimiento_cafe.pkl",
-        DIR_MOD / "modelo_rf_rendimiento_cafe.pkl",
-        PROJECT.parent / "IA_Segunda_Entrega" / "outputs" / "modelos" / "modelo_rf_rendimiento_cafe.pkl",
-    ]
-    for p in candidatos:
-        if p.exists():
-            try:
-                return joblib.load(p), p.name
-            except Exception:
-                continue
+    modelo_path = DIR_MOD / "ml_municipal_rendimiento.pkl"
+    if modelo_path.exists():
+        try:
+            return joblib.load(modelo_path), modelo_path.name
+        except Exception as e:
+            st.error(f" [WARNING] El archivo existe, pero falló al cargar: {e}")
+            return None, None
+    st.error(f" [WARNING] No se encontró el modelo entrenado en: {modelo_path}")
     return None, None
 
 modelo, nombre = cargar_modelo()
