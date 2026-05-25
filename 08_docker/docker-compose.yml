@@ -19,14 +19,15 @@ services:
       POSTGRES_DB: cafe_ia
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
-      POSTGRES_INITDB_ARGS: "-E UTF8"
+      # POSTGRES_INITDB_ARGS: "-E UTF8"
     ports:
       - "5432:5432"
     volumes:
       - cafe_pgdata:/var/lib/postgresql/data
       - ../03_scripts/bd/01_ddl_schema.sql:/docker-entrypoint-initdb.d/01_ddl_schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "cafe_ia"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,8 +39,8 @@ services:
       dockerfile: 08_docker/Dockerfile
     container_name: cafe_streamlit
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+        #condition: service_healthy
     environment:
       PG_HOST: db
       PG_PORT: 5432

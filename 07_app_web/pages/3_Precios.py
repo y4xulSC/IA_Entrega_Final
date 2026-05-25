@@ -19,8 +19,9 @@ de **redes recurrentes profundas** entrenados con datos 1990-2026.
 @st.cache_data
 def cargar_historico():
     candidatos = [
+        PROJECT / "01_datos" / "procesados" / "precios_validado.csv",
         PROJECT / "01_datos" / "enriquecidos" / "precios" / "precios_consolidados_mensual.csv",
-        PROJECT.parent / "IA_Segunda_Entrega" / "datasets" / "fnc_cafe_mensual.csv",
+        PROJECT / "01_datos" / "originales" / "precios" / "fnc_cafe_mensual.csv",
     ]
     for p in candidatos:
         if p.exists():
