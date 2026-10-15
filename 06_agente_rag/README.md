@@ -24,11 +24,37 @@ pip install chromadb pypdf unstructured
    ```bash
    export GROQ_API_KEY=gsk_xxxxx
    ```
+4. (Opcional) Elegir el modelo con `GROQ_MODEL`. Por defecto se usa
+   `openai/gpt-oss-20b`; si Groq lo retira, el agente prueba `openai/gpt-oss-120b`.
+   Modelos vigentes: https://console.groq.com/docs/models
+   ```bash
+   export GROQ_MODEL=openai/gpt-oss-20b
+   ```
 
 **Opción B — Ollama local (sin internet, más lento):**
 1. Instalar: https://ollama.com/download
 2. Bajar modelo: `ollama pull llama3.1:8b`
 3. (Opcional) `export OLLAMA_HOST=http://localhost:11434`
+
+### Fuentes validadas de Cenicafé (dosis y periodos de carencia)
+
+El agente solo da dosis, concentraciones y periodos de carencia que estén en
+documentos de **`documentos_fuente/cenicafe/`** (PDF de boletines técnicos,
+avances técnicos, Manual del Cafetero). Todo lo demás del corpus se trata como
+material de apoyo del equipo. Si no hay un documento validado con la dosis,
+responde: *"No cuento con la dosificación exacta validada por Cenicafé para
+este caso específico; consulte al extensionista del Comité de Cafeteros de su
+municipio."*
+
+Las reglas están en `PROMPT_SISTEMA` y se verifican en código sobre cada
+respuesta (`aplicar_salvaguardas`): sin fuente validada se retira cualquier
+frase con una dosis; si se mencionan fungicidas se agrega la advertencia de EPP
+y periodo de carencia; si se menciona fertilización, la del análisis de suelos.
+
+Después de copiar documentos a `cenicafe/`, reindexa:
+```bash
+python rag_pipeline.py indexar --force
+```
 
 ## Uso
 
@@ -92,7 +118,7 @@ Búsqueda similitud en Chroma  ──→  Top-k chunks relevantes
        ↓
 Prompt = pregunta + contexto
        ↓
-LLM (Groq llama-3.1-70b)
+LLM (Groq · openai/gpt-oss-20b)
        ↓
 Respuesta con citas
 ```
@@ -100,6 +126,6 @@ Respuesta con citas
 ## Cobertura del syllabus
 
 - Embeddings: representación vectorial de palabras (Unidad IV — PLN)
-- Transformers: el LLM Llama-3.1 internamente es un transformer
+- Transformers: el LLM (gpt-oss) internamente es un transformer
 - RAG: arquitectura Retrieval Augmented Generation (estado del arte 2024)
 - Aplicación: asistencia conversacional al MADR/FNC

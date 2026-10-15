@@ -4,6 +4,7 @@
 *.env.local
 06_agente_rag/.env
 07_app_web/.env
+**/.streamlit/secrets.toml
 
 # Kaggle credentials
 kaggle.json
