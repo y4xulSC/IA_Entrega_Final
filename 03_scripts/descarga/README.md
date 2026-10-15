@@ -12,6 +12,7 @@ Scripts para enriquecer el dataset de la 2da entrega con fuentes adicionales que
 | `04_descargar_eva_municipal.py` | DANE EVA municipal extendido | 14 obs → 1000+ obs municipales | ~20 MB | 5 min |
 | `05_descargar_dem_suelos.py` | SRTM DEM + SoilGrids | Variables agronómicas faltantes | ~200 MB | 30 min |
 | `06_consolidar_imagenes.py` | Local | Unifica RoCoLe+BRACOL+JMuBEN+CALIBRO en estructura común | — | 5 min |
+| `08_descargar_divipola.py` | DANE DIVIPOLA (datos.gov.co `gdxc-w37w`) | Coordenadas de los 1.122 municipios para el mapa de alertas de roya | <1 MB | <1 min |
 | `00_ejecutar_todo.py` | — | Orquesta todos en orden | — | varias horas |
 
 ## Uso

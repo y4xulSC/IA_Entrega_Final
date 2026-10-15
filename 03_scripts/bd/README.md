@@ -22,6 +22,9 @@ Se lee desde `.env` en la raíz del proyecto:
 | `_config_bd.py` | Módulo común: lee `.env`, configura logging, abre conexión |
 | `validar_pre_carga.py` | Reporte calidad de los `*_validado.csv` antes de cargar |
 | `02_carga_inicial.py` | Carga los validados a la BD (idempotente, con UPSERTs) |
+| `03_supabase_schema.sql` | Versión del DDL para el SQL Editor de Supabase + tablas de la app (ver sección Supabase) |
+| `db_client.py` | Cliente de la app Streamlit para Supabase |
+| `04_vistas_kpis.sql` | Solo las vistas de KPIs (`telemetria_kpis`, `vw_kpis_consolidados`), para bases que ya tenían el esquema v1.3 |
 
 ## Flujo recomendado
 
@@ -74,6 +77,55 @@ UNION ALL SELECT 'fact_produccion',   count(*) FROM cafe.fact_produccion
 UNION ALL SELECT 'fact_imagen_enfermedad', count(*) FROM cafe.fact_imagen_enfermedad;
 
 SELECT * FROM cafe.vw_master_municipal_mensual LIMIT 5;
+```
+
+## Supabase (nube, sin Docker)
+
+La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`), el 👍/👎 del caficultor y la telemetría con las calificaciones del chat (`cafe.registro_eventos_uso`, vista `cafe.vw_feedback_rag`). El mapa de **Alertas fitosanitarias** (rol Agrónomo / Cooperativa) lee de ahí y se refresca cada 30 s. Si la base no responde, la app sigue con los archivos locales de `05_resultados/logs/` y lo avisa en pantalla.
+
+| Archivo | Función |
+|---------|---------|
+| `03_supabase_schema.sql` | Esquema en estrella + tablas transaccionales, listo para el SQL Editor de Supabase. Idempotente: se puede volver a ejecutar sin borrar datos |
+| `db_client.py` | Cliente de la app (psycopg2 con pool, reintento en pausa de 60 s, `connect_timeout` de 5 s) |
+
+### Paso 1 — Crear las tablas
+Supabase → **SQL Editor** → **New query** → pegar todo `03_supabase_schema.sql` → **Run**. La última fila dice `OK · esquema cafe con 14 tablas…`.
+
+Seguridad: el esquema `cafe` no se publica en la Data API, tiene RLS activado sin políticas y se le retiran los permisos a `anon` y `authenticated`. La llave pública (`anon key`) de Supabase no puede leerlo; solo la app con la contraseña de la base.
+
+### Paso 2 — Credenciales
+Supabase → **Connect** → **Session pooler** (puerto 5432, funciona por IPv4; la *Direct connection* solo por IPv6). Copiar la cadena y reemplazar `[YOUR-PASSWORD]`.
+
+Opción A — `07_app_web/.streamlit/secrets.toml` (no se sube a git; plantilla en `secrets.toml.example`):
+```toml
+[connections.postgresql]
+url = "postgresql://postgres.<PROJECT_REF>:<CONTRASEÑA>@aws-0-<REGION>.pooler.supabase.com:5432/postgres"
+```
+Opción B — `.env` en la raíz: `SUPABASE_DB_URL=postgresql://...`
+
+En Streamlit Community Cloud el contenido de `secrets.toml` va en **Settings → Secrets**.
+
+### Paso 3 — Probar
+```bash
+python 03_scripts/bd/db_client.py      # OK · PostgreSQL 17.x · N diagnósticos · M eventos
+```
+Reiniciar Streamlit. En el panel lateral **Depuración** aparece `Supabase: conectada`.
+
+### Paso 4 (opcional) — Coordenadas de todos los municipios
+```bash
+python 03_scripts/descarga/08_descargar_divipola.py
+```
+Sin este archivo el mapa de alertas solo ubica las 21 cabeceras de `geografia_validado.csv`; los demás municipios aparecen listados debajo del mapa.
+
+### Paso 5 (opcional) — Cargar el esquema en estrella con los datos históricos
+`02_carga_inicial.py` funciona contra Supabase si el `.env` apunta al pooler: `PG_HOST=aws-0-<REGION>.pooler.supabase.com`, `PG_PORT=5432`, `PG_USER=postgres.<PROJECT_REF>`, `PG_DB=postgres`, `PG_PASSWORD=<contraseña>` y `PGSSLMODE=require`.
+
+### Pruebas
+```bash
+cd 07_app_web
+python -m pytest tests/test_persistencia.py -q -rs
+# con una base de PRUEBAS (nunca la de producción):
+COFITECH_TEST_DB_URL=postgresql://... python -m pytest tests/test_persistencia.py -q
 ```
 
 ## Cambios en el DDL respecto a versión 1.0

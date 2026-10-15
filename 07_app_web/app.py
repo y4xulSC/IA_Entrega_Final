@@ -1,136 +1,93 @@
-"""
-═══════════════════════════════════════════════════════════════════════════════
- app.py · Sistema IA Café Colombia — App Web (Streamlit)
-═══════════════════════════════════════════════════════════════════════════════
- Punto de entrada multipágina. Usa la convención `pages/` de Streamlit.
+"""CofiTech · Plataforma Dual Adaptativa por Roles (MockUp final, Opción 3 del AHP).
 
- Ejecutar:
-   cd 07_app_web
-   python -m streamlit run app.py
-═══════════════════════════════════════════════════════════════════════════════
+Ejecutar:
+    cd 07_app_web
+    python -m streamlit run app.py
+
+Este archivo es el enrutador: decide qué pantallas ve cada rol
+(``cofitech/navegacion.py``), dibuja la barra de contexto compartido arriba de
+todas y el enlace «siguiente paso» al final. Las 9 pantallas de la app
+anterior se conservan: las 8 de ``pages/`` se agrupan por rol y la portada
+antigua quedó como «Ficha técnica de modelos» (``vistas/ficha_tecnica.py``),
+visible solo para administradores.
+
+Utilidades:
+    cofitech/contexto_finca.py  estado compartido (finca, zona, diagnóstico, riesgo, precio)
+    cofitech/vision.py          CNN + Grad-CAM
+    cofitech/prescripcion.py    manejo de roya por incidencia (sin dosis en el código)
+    cofitech/precios_ridge.py   simulador Ridge de precio interno
+    cofitech/telemetria.py      registrar_evento_uso y botones 👍/👎 (KPIs)
+    cofitech/repositorio.py     persistencia (Supabase + archivo local)
+    cofitech/seguridad.py       acceso de administrador
 """
+from __future__ import annotations
+
+import json
+from dataclasses import asdict
 
 import streamlit as st
-from pathlib import Path
 
-st.set_page_config(
-    page_title="Sistema IA Café Colombia",
-    page_icon="☕",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+from cofitech import repositorio, seguridad
 
-# CSS personalizado
-CSS = """
-<style>
-.big-metric {font-size: 2.5em; color: #2E7D32; font-weight: 700;}
-.module-card {background: #f6f6f4; padding: 1.2em; border-radius: 12px;
-              border-left: 4px solid #6F4E37; margin-bottom: 1em;}
-h1 {color: #3E2723;}
-h2 {color: #4E342E;}
-.success {background: #e8f5e9; padding: 0.8em; border-radius: 8px;}
-.warning {background: #fff8e1; padding: 0.8em; border-radius: 8px;}
-</style>
-"""
-st.markdown(CSS, unsafe_allow_html=True)
+from cofitech import navegacion as nav
+from cofitech.contexto_finca import obtener_contexto, registrar_diagnostico, reiniciar_muestreo
 
-# Header
-col1, col2 = st.columns([1, 4])
-with col1:
-    st.markdown("# ☕")
-with col2:
-    st.title("Sistema Integral de IA Agrícola — Café Colombia")
-    st.markdown(
-        "**Universidad Autónoma de Occidente · Ingeniería de Datos e IA · 2026-1**  \n"
-        "Yáxul Santiago Cárdenas · Yesenia Díaz Urrego — *Entrega Final*"
+# 1.46: st.set_page_config puede llamarse en el enrutador y en cada pantalla.
+# 1.49: st.dataframe(width="stretch"), que usa pages/4_Enfermedades.py.
+VERSION_MINIMA: tuple[int, int] = (1, 49)
+
+# Panel de depuración: muestra el estado compartido y permite simular un
+# diagnóstico sin subir una foto (útil para ensayar la sustentación sin el
+# modelo CNN). Solo lo ven los administradores; en False no lo ve nadie.
+MODO_ESQUELETO: bool = True
+
+
+def _version_streamlit() -> tuple[int, int]:
+    mayor, menor, *_ = st.__version__.split(".")
+    return int(mayor), int(menor)
+
+
+def _panel_esqueleto() -> None:
+    with st.sidebar.expander("Depuración · estado compartido"):
+        st.caption(f"Supabase: {repositorio.db_client.estado()}")
+        if st.button("Simular hoja con roya", use_container_width=True):
+            registrar_diagnostico("Roya", 0.87, "simulado", es_demo=True)
+            st.rerun()
+        if st.button("Simular hoja sana", use_container_width=True):
+            registrar_diagnostico("Sano", 0.93, "simulado", es_demo=True)
+            st.rerun()
+        if st.button("Reiniciar muestreo", use_container_width=True):
+            reiniciar_muestreo()
+            st.rerun()
+        st.json(json.loads(json.dumps(asdict(obtener_contexto()), default=str)), expanded=1)
+
+
+st.set_page_config(page_title="CofiTech", page_icon="☕", layout="wide")
+
+if _version_streamlit() < VERSION_MINIMA:
+    st.error(
+        f"CofiTech necesita Streamlit {VERSION_MINIMA[0]}.{VERSION_MINIMA[1]} o superior "
+        f"(instalado: {st.__version__}). Ejecuta: pip install -U streamlit"
     )
+    st.stop()
 
-st.markdown("---")
+ctx = obtener_contexto()
 
-# Hero / pitch
-st.markdown(
-    """
-    Este sistema integra **datos abiertos del agro colombiano** con **modelos
-    de IA** para apoyar decisiones del Ministerio de Agricultura (MADR) y la
-    Federación Nacional de Cafeteros (FNC).
-    """
-)
+if not ctx.listo:
+    # Sin rol o sin datos mínimos: la única pantalla posible es el ingreso.
+    st.navigation([st.Page("vistas/acceso.py", title="Ingreso")], position="hidden").run()
+    st.stop()
 
-# Métricas top
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.metric("Datasets integrados", "11", help="EVA, FNC, ICO, NOAA, IDEAM, Open-Meteo, FRED, World Bank, CALIBRO+RoCoLe+BRACOL+JMuBEN, SoilGrids, SRTM")
-with c2:
-    st.metric("Modelos entrenados", "13+", help="ML clásico, MLP profundo, CNN x3, RNN x4, AE+VAE")
-with c3:
-    st.metric("Imágenes café", "~10K", help="vs 47 en la 2da entrega")
-with c4:
-    st.metric("Cobertura syllabus", "U.I-IV ✓", help="Las 4 unidades del curso cubiertas")
+secciones, indice = nav.construir_paginas(ctx.rol, admin=seguridad.es_admin())
+pagina = st.navigation(secciones, expanded=True)   # con más de 10 páginas Streamlit oculta el resto
 
-st.markdown("---")
+nav.pie_lateral(ctx)
+if MODO_ESQUELETO and seguridad.es_admin():
+    _panel_esqueleto()
 
-# Módulos del sistema
-st.subheader("🧩 Módulos disponibles")
-
-mods = [
-    ("📊 Dashboard agroclimático", "Visualiza indicadores del café por departamento y año (rendimiento, precio, ENSO).", "1_📊_Dashboard"),
-    ("🌱 Predicción de rendimiento", "Predice rendimiento (ton/ha) según condiciones climáticas (MLP profundo + Stacking).", "2_🌱_Rendimiento"),
-    ("💰 Forecasting de precios", "Pronóstico de precio FNC e ICO (LSTM, BiGRU, Transformer).", "3_💰_Precios"),
-    ("📷 Detector de enfermedades", "Sube foto de hoja → CNN clasifica Roya, Gotera, Cercospora, Phoma, Miner, Sano.", "4_📷_Enfermedades"),
-    ("🤖 Asistente conversacional", "Chatbot RAG con contexto del proyecto, datos integrados y conocimiento agronómico.", "5_🤖_Chatbot"),
-    ("🗺️ Mapa cafetero", "Mapa interactivo de municipios cafeteros + clústeres agroclimáticos.", "6_🗺️_Mapa"),
-]
-
-cols = st.columns(2)
-for i, (titulo, desc, page) in enumerate(mods):
-    with cols[i % 2]:
-        st.markdown(
-            f"<div class='module-card'><b>{titulo}</b><br/>{desc}</div>",
-            unsafe_allow_html=True,
-        )
-
-st.markdown("---")
-
-# Cobertura del syllabus
-st.subheader("📚 Cobertura del syllabus")
-syllabus = {
-    "Unidad I — Introducción a la IA": "Documento académico (Cap. 1) — riesgos y oportunidades para café colombiano",
-    "Unidad II — ML": "Regresión (NB02, NB05, NB09), Clasificación (NB11), Agrupamiento (NB11), Sesgos (Fairlearn en NB11)",
-    "Unidad III — Redes Neuronales": "NB07: perceptrón → red superficial → MLP profundo. Comparación Adam/SGD/RMSprop.",
-    "Unidad IV — Deep Learning": "CNN (NB08), LSTM/Transformer (NB10), VAE generativa (NB12), RAG/Transformers (06_agente_rag)",
-}
-for k, v in syllabus.items():
-    st.markdown(f"**{k}**  \n{v}")
-
-st.markdown("---")
-
-# Estado de los modelos
-st.subheader("🎯 Estado de los modelos")
-
-models_status = {
-    "Modelo": ["ML Precio (Ridge)", "ML Rendimiento (Stacking)", "MLP Profundo",
-               "BiGRU Series Tiempo", "Transformer", "CNN MobileNetV2",
-               "Autoencoder Anomalías", "Agente RAG (Groq+Llama3.1)"],
-    "Estado 2da entrega": ["R²=0.945", "R²=0.067", "—",
-                            "R²=−2.12", "—", "Acc=48.9%",
-                            "—", "—"],
-    "Estado entrega final": ["R²=0.945+", "R²>0.5 esperado", "Implementado",
-                              "R²>0.5 esperado", "Implementado", "Acc=81.9%, F1=82.7%",
-                              "Implementado", "Funcional y Rápido"],
-}
-import pandas as pd
-df_status = pd.DataFrame(models_status)
-st.dataframe(df_status, use_container_width=True, hide_index=True)
-
-st.markdown("---")
-
-# Footer
-st.markdown(
-    """
-    <div style='text-align: center; color: #888; padding: 1em;'>
-    Universidad Autónoma de Occidente · Ingeniería de Datos e IA · Mayo 2026<br/>
-    Yáxul Santiago Cárdenas · Yesenia Díaz Urrego
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+nav.barra_contexto(ctx)                      # arriba de TODAS las pantallas
+try:
+    pagina.run()                             # la pantalla elegida (original o nueva)
+finally:
+    # También cuando la pantalla termina con st.stop() (p. ej. por falta de datos).
+    nav.siguiente_paso(ctx, pagina, indice)  # hacia dónde sigue el recorrido

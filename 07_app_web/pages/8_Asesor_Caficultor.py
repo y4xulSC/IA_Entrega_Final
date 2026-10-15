@@ -6,6 +6,8 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime, date
 
+from cofitech.calendario import CALENDARIO as CALENDARIO_REFERENCIA
+
 st.set_page_config(page_title="Asesor del Caficultor", page_icon="🌱", layout="wide")
 st.title("🌱 Asesor del Caficultor")
 st.caption("Recordatorios mensuales · Alertas climáticas y de precio · Buenas prácticas")
@@ -13,57 +15,8 @@ st.caption("Recordatorios mensuales · Alertas climáticas y de precio · Buenas
 PROJECT = Path(__file__).resolve().parents[2]
 DIR_PROC = PROJECT / "01_datos" / "procesados"
 
-# Calendario agronómico mes-a-mes
-CALENDARIO = {
-    1:  {"actividad": "Manejo de arvenses y planeación",
-         "tareas": ["Plato limpio alrededor del tronco (40 cm radio)",
-                    "Revisar plan de fertilización del año",
-                    "Limpiar herramientas (machete, tijeras de poda)"]},
-    2:  {"actividad": "PRIMERA FERTILIZACIÓN del año",
-         "tareas": ["Aplicar NPK 17-6-18-2 (200-300 g por planta)",
-                    "Mojar bien antes de abonar si está seco",
-                    "Hacer deshije: dejar 2-3 chupones por tronco"]},
-    3:  {"actividad": "Inicio cosecha mitaca (Antioquia, Tolima, Valle)",
-         "tareas": ["Recolección selectiva: SOLO cereza roja madura",
-                    "Beneficio: lavar bien, secar lento (6-12 días)",
-                    "Monitorear roya en hojas jóvenes"]},
-    4:  {"actividad": "Cosecha mitaca + control roya",
-         "tareas": ["Continuar cosecha selectiva",
-                    "Si hay >10% incidencia roya: aplicar triazol",
-                    "Revisar trampas de broca"]},
-    5:  {"actividad": "SEGUNDA FERTILIZACIÓN (poscosecha mitaca)",
-         "tareas": ["Aplicar NPK con énfasis en potasio",
-                    "Foliar con boro + magnesio si hojas amarillas",
-                    "Podas selectivas de ramas improductivas"]},
-    6:  {"actividad": "Final mitaca, secado, mantenimiento",
-         "tareas": ["Terminar de secar el café (humedad 10-12%)",
-                    "Almacenar en pergamino, lugar seco",
-                    "Sembrar nuevas chapolas si renovó zoca"]},
-    7:  {"actividad": "Floración principal (depende del clima)",
-         "tareas": ["NO regar fuerte durante floración",
-                    "Vigilar broca: muestreo semanal",
-                    "Revisar sombrío: ralear si está muy denso"]},
-    8:  {"actividad": "TERCERA FERTILIZACIÓN + control plagas",
-         "tareas": ["Aplicar NPK balanceado",
-                    "Control de broca con trampas + buenas prácticas",
-                    "Control de minador si infestación >30%"]},
-    9:  {"actividad": "Inicio cosecha principal (zona andina)",
-         "tareas": ["Recolección selectiva diaria",
-                    "Beneficio inmediato (máx 6h después de recoger)",
-                    "Monitorear gotera con humedad alta"]},
-    10: {"actividad": "Pico de cosecha principal",
-         "tareas": ["Maximizar mano de obra de recolección",
-                    "Asegurar capacidad de fermentadores y patios",
-                    "Revisar puntaje SCA con muestras a tostadora"]},
-    11: {"actividad": "CUARTA FERTILIZACIÓN + cosecha",
-         "tareas": ["Aplicar NPK final del año",
-                    "Continuar recolección selectiva",
-                    "Si viene El Niño anticipado: reforzar sombrío"]},
-    12: {"actividad": "Final cosecha + planeación próximo año",
-         "tareas": ["Cierre de cosecha y secado final",
-                    "Mantenimiento de equipos (despulpadora)",
-                    "Decidir qué lotes vender por SCA y cuáles por FNC"]},
-}
+# Calendario agronómico mes-a-mes (compartido con el agente RAG; sin dosis fijas)
+CALENDARIO = CALENDARIO_REFERENCIA
 
 # Sidebar: datos del usuario
 with st.sidebar:
