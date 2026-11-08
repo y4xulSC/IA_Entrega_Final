@@ -49,6 +49,7 @@ LOG_DIR=05_resultados/logs
 ```bash
 psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE cafe_ia;"
 psql -U postgres -h localhost -p 5432 -d cafe_ia -f 03_scripts/bd/01_ddl_schema.sql
+psql -U postgres -h localhost -p 5432 -d cafe_ia -f 03_scripts/bd/03_supabase_schema.sql   # tablas de la app
 ```
 
 ### Paso 3 — Validar los CSVs antes de cargar
@@ -64,7 +65,7 @@ genera reporte MD en `05_resultados/reportes/pre_carga_<timestamp>.md`.
 python 03_scripts/bd/02_carga_inicial.py
 ```
 
-Carga en orden: `dim_periodo → ONI → dim_municipio → fact_clima → fact_precio → fact_produccion → fact_imagen_enfermedad → vista materializada`. Usa UPSERTs por PK natural (idempotente: puedes correrlo 2 veces sin duplicar).
+Carga en orden: `dim_periodo → ONI → dim_municipio → fact_clima → fact_precio → fact_produccion → fact_imagen_enfermedad → vista materializada`. Usa UPSERTs por PK natural; `fact_produccion` y `fact_imagen_enfermedad` no tienen llave natural única, así que sus filas se reemplazan en la misma transacción. Se puede correr varias veces sin duplicar (probado tres veces seguidas: 7.263 filas de producción y 10.846 imágenes en cada corrida).
 
 Logs: `05_resultados/logs/carga_inicial_<timestamp>.log` y consola.
 
