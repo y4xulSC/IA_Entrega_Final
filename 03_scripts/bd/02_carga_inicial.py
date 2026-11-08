@@ -3,7 +3,9 @@
  02_carga_inicial.py  ·  Carga los *_validado.csv a PostgreSQL
 ===============================================================================
  Lee 01_datos/procesados/*_validado.csv (producidos por 03_scripts/etl/) y los
- inserta en la BD `cafe_ia` esquema `cafe`. Idempotente (UPSERTs por PK natural).
+ inserta en la BD `cafe_ia` esquema `cafe`. Idempotente: UPSERTs por PK natural y,
+ en fact_produccion y fact_imagen_enfermedad (sin llave natural única), reemplazo
+ de las filas que carga este script. Se puede correr varias veces sin duplicar.
 
  Pre-requisitos:
    1. PostgreSQL >= 13 corriendo (config en .env)
@@ -342,6 +344,12 @@ def cargar_produccion():
                estado_fisico, ciclo_cultivo, fuente)
             VALUES %s
         """
+        # La tabla no tiene una llave natural única (puede haber varias filas por
+        # municipio-año): para no duplicar al recargar, se reemplazan las filas
+        # de esta fuente en la misma transacción.
+        cur.execute("DELETE FROM cafe.fact_produccion WHERE fuente = 'EVA-Socrata'")
+        if cur.rowcount:
+            logger.info(f"  INFO  - {cur.rowcount} filas EVA-Socrata anteriores reemplazadas")
         execute_values(cur, sql, rows)
     logger.info(f"  OK {len(rows)} registros producción · sin_mun={sin_mun} sin_per={sin_per}")
 
@@ -377,6 +385,12 @@ def cargar_imagenes():
                variedad_cafe, split_modelo)
             VALUES %s
         """
+        # Sin llave natural única: se reemplazan las imágenes del manifiesto
+        # (por ruta) para que recargar no las duplique.
+        rutas = sorted({fila[1] for fila in rows})
+        cur.execute("DELETE FROM cafe.fact_imagen_enfermedad WHERE ruta_archivo = ANY(%s)", (rutas,))
+        if cur.rowcount:
+            logger.info(f"  INFO  - {cur.rowcount} imágenes anteriores reemplazadas")
         # Insercion en chunks (manifest grande)
         CHUNK = 5000
         for i in range(0, len(rows), CHUNK):
