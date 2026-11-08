@@ -51,7 +51,7 @@ CLAVE_LOG = "log_eventos"
 _CLAVE_VOTOS = "cofitech_votos"
 _CLAVE_UNICOS = "cofitech_eventos_unicos"
 
-HERRAMIENTAS: tuple[str, ...] = ("Visión", "Predicción Rendimiento", "Predicción Precios", "RAG")
+HERRAMIENTAS: tuple[str, ...] = ("Visión", "Predicción Rendimiento", "Predicción Precios", "RAG", "Mercado")
 ETIQUETA_ROL: dict[Rol, str] = {Rol.CAFICULTOR: "Caficultor", Rol.AGRONOMO: "Agrónomo/Cooperativa"}
 GRACIAS = "Gracias por ayudarnos a calibrar los modelos para el campo colombiano"
 

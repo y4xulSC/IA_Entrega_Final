@@ -1,159 +1,144 @@
-"""Asesor del Caficultor — recordatorios mensuales, alertas y buenas prácticas.
-Pensado para asociaciones de pequeños caficultores (caso Rionegro, Antioquia).
+"""Hoy en mi finca: paso 1 del MockUp ganador (lámina de Sofía).
+
+Una pantalla de decisiones para el celular: precio FNC del día, clima y
+último diagnóstico, tareas del mes y aviso de compradores que llevan a Vender.
+Todo sale del contexto compartido (``cofitech/contexto_finca.py``): esta
+pantalla ya no pide municipio, altitud ni área (RF01).
+
+Para el agrónomo la misma pantalla es «Calendario del caficultor».
 """
+from __future__ import annotations
+
+from datetime import date
+
 import streamlit as st
-import pandas as pd
-from pathlib import Path
-from datetime import datetime, date
 
-from cofitech.calendario import CALENDARIO as CALENDARIO_REFERENCIA
+from cofitech import marca, mercado
+from cofitech.calendario import CALENDARIO, MESES, estado_fenologico
+from cofitech.contexto_finca import Rol, mes_anio, obtener_contexto
+from cofitech.datos import series_precios
 
-st.set_page_config(page_title="Asesor del Caficultor", page_icon="🌱", layout="wide")
-st.title("🌱 Asesor del Caficultor")
-st.caption("Recordatorios mensuales · Alertas climáticas y de precio · Buenas prácticas")
+st.set_page_config(page_title="Hoy en mi finca", page_icon=marca.ICONO, layout="wide")
 
-PROJECT = Path(__file__).resolve().parents[2]
-DIR_PROC = PROJECT / "01_datos" / "procesados"
+ctx = obtener_contexto()
+finca, clima, precio = ctx.finca, ctx.clima, ctx.mercado
+hoy = date.today()
 
-# Calendario agronómico mes-a-mes (compartido con el agente RAG; sin dosis fijas)
-CALENDARIO = CALENDARIO_REFERENCIA
+CONSEJO_ENSO = {
+    "Nina": ("Más lluvia: vigila la roya", "ambar"),
+    "Nino": ("Menos lluvia: cuida el sombrío", "rojo"),
+    "Neutro": ("Año típico", "verde"),
+}
 
-# Sidebar: datos del usuario
-with st.sidebar:
-    st.header("Tu finca")
-    municipio = st.text_input("Municipio", value="Rionegro")
-    departamento = st.selectbox("Departamento",
-        ["Antioquia", "Huila", "Nariño", "Caldas", "Tolima",
-         "Quindío", "Risaralda", "Cauca", "Valle del Cauca",
-         "Santander", "Cundinamarca", "Otro"])
-    altitud = st.number_input("Altitud finca (msnm)", 500, 3000, 2100, 50,
-                                help="Rionegro Antioquia ≈ 2100 msnm")
-    area_ha = st.number_input("Hectáreas de café", 0.1, 100.0, 2.0, 0.1)
 
-# 1. Recordatorios del mes
-mes_actual = datetime.now().month
-st.subheader(f"📅 Tareas de este mes ({datetime.now().strftime('%B %Y')})")
-info = CALENDARIO.get(mes_actual, {})
-st.markdown(f"### {info.get('actividad', '—')}")
-for t in info.get("tareas", []):
-    st.markdown(f"- {t}")
+@st.cache_data(ttl=3600, show_spinner=False)
+def _variacion_fnc() -> tuple[float | None, float | None]:
+    """Cambio del precio FNC frente al mes anterior y frente al promedio de 12 meses."""
+    serie = series_precios().get("fnc")
+    if serie is None or len(serie) < 13:
+        return None, None
+    ultimo, anterior = float(serie.iloc[-1]), float(serie.iloc[-2])
+    media = float(serie.tail(12).mean())
+    return 100 * (ultimo / anterior - 1), 100 * (ultimo / media - 1)
 
-if mes_actual in (2, 5, 8, 11):
-    st.warning(f"⚠ **Este es mes de fertilización.** Si no abonas ahora, "
-                f"perderás producción y aumentarás riesgo de enfermedades.")
 
-# 2. Alerta climática y ENSO
-st.markdown("---")
-st.subheader("🌦 Alerta climática")
+def _num(valor: float) -> str:
+    return f"{valor:,.0f}".replace(",", ".")
 
-@st.cache_data
-def cargar_enso():
-    p = DIR_PROC / "enso_validado.csv"
-    if not p.exists():
-        p = PROJECT / "01_datos" / "enriquecidos" / "clima" / "enso_oni_extendido.csv"
-    if not p.exists():
-        return None
-    df = pd.read_csv(p)
-    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
-    return df.dropna(subset=["fecha"]).sort_values("fecha")
 
-enso = cargar_enso()
-if enso is not None and len(enso):
-    ult = enso.iloc[-1]
-    oni = float(ult.get("oni", 0))
-    fase = ult.get("fase_enso", "Neutro")
+# ── Encabezado ──────────────────────────────────────────────────────────────
+if ctx.rol == Rol.AGRONOMO:
+    st.title("Calendario del caficultor")
+    st.caption("Lo que ven tus asociados en su pantalla de inicio")
+else:
+    st.title("Hoy en mi finca")
+    st.caption("Esto es lo que pasa hoy en tu finca")
 
-    c1, c2, c3 = st.columns(3)
-    with c1: st.metric("Índice ONI actual", f"{oni:+.2f}")
-    with c2: st.metric("Fase ENSO", fase)
-    with c3: st.metric("Última actualización", ult.fecha.strftime("%b %Y"))
+col_izq, col_der = st.columns([1, 1], gap="large")
 
-    if fase == "Nino":
-        st.error("☀ **El Niño activo.** Reducción esperada de rendimiento ~24%.\n\n"
-                  "**Qué hacer:**\n"
-                  "- Reforzar sombrío para reducir estrés térmico\n"
-                  "- Fertilización foliar para soportar al cafetal\n"
-                  "- Riego si tienes posibilidad\n"
-                  "- Vigilar roya intensificada por estrés")
-    elif fase == "Nina":
-        st.warning("🌧 **La Niña activa.** Reducción esperada ~12% por exceso de lluvia.\n\n"
-                    "**Qué hacer:**\n"
-                    "- Revisar drenajes\n"
-                    "- Podas sanitarias para mejorar aireación\n"
-                    "- Fungicidas cúpricos preventivos contra gotera y antracnosis")
+with col_izq:
+    # ── Precio FNC (tarjeta café) ──
+    cambio_mes, sobre_media = _variacion_fnc()
+    if precio.precio_fnc_cop_carga:
+        chip = (f"{'↑' if cambio_mes >= 0 else '↓'} {marca.pct(abs(cambio_mes), signo=False)} vs. mes anterior"
+                if cambio_mes is not None else "")
+        st.markdown(marca.tarjeta_precio(
+            "Precio interno FNC", f"${_num(precio.precio_fnc_cop_carga)}",
+            f"por carga de 125 kg · pergamino seco · dato de {mes_anio(precio.fecha)}", chip), unsafe_allow_html=True)
     else:
-        st.success("✓ **Condiciones ENSO neutras.** Año típico esperado.")
-else:
-    st.info("Sin datos ENSO recientes. Ejecuta el pipeline ETL para actualizarlos.")
+        st.markdown(marca.tarjeta("Precio interno FNC", "Sin dato", "Ejecuta el ETL de precios"), unsafe_allow_html=True)
 
-# 3. Alerta de precio
-st.markdown("---")
-st.subheader("💰 Alerta de precio FNC")
-
-@st.cache_data
-def cargar_precios():
-    p = DIR_PROC / "precios_validado.csv"
-    if not p.exists(): return None
-    df = pd.read_csv(p)
-    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
-    return df.dropna(subset=["fecha"]).sort_values("fecha")
-
-precios = cargar_precios()
-if precios is not None and "precio_fnc_cop_kg" in precios.columns:
-    serie = precios[["fecha","precio_fnc_cop_kg"]].dropna()
-    if len(serie) >= 2:
-        ult = float(serie["precio_fnc_cop_kg"].iloc[-1])
-        ant = float(serie["precio_fnc_cop_kg"].iloc[-2])
-        cambio = (ult / ant - 1) * 100
-        media_12m = float(serie["precio_fnc_cop_kg"].tail(12).mean())
-
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("Precio FNC último", f"${ult:,.0f}/kg", f"{cambio:+.1f}%")
-        with c2: st.metric("Promedio 12 meses", f"${media_12m:,.0f}/kg")
-        with c3: st.metric("Carga 125kg", f"${ult*125:,.0f} COP")
-
-        if ult > media_12m * 1.1:
-            st.success("📈 **Precio ALTO** (>10% sobre promedio 12 meses). "
-                        "Buen momento para vender tu inventario disponible.")
-        elif ult < media_12m * 0.9:
-            st.warning("📉 **Precio BAJO** (<10% debajo del promedio). "
-                        "Si puedes esperar, vale la pena retener.")
+    # ── Clima y última hoja ──
+    c1, c2 = st.columns(2)
+    with c1:
+        consejo, tono = CONSEJO_ENSO.get(clima.fase_enso or "", ("Sin dato reciente", ""))
+        st.markdown(marca.tarjeta("Clima (ENSO)", clima.fase_legible, consejo, tono),
+                    unsafe_allow_html=True)
+    with c2:
+        d, m = ctx.diagnostico, ctx.muestreo
+        if d is None:
+            st.markdown(marca.tarjeta("Última hoja", "Sin revisar", "Toma una foto en «Revisar una hoja»"),
+                        unsafe_allow_html=True)
         else:
-            st.info("↔ Precio en rango normal. Vende según tu flujo de caja.")
-else:
-    st.info("Sin datos de precio cargados.")
+            color = "rojo" if d.clase == "Roya" else ("verde" if d.clase == "Sano" else "ambar")
+            riesgo = f"Riesgo {m.riesgo.lower()}" if m.riesgo else ""
+            st.markdown(marca.tarjeta("Última hoja", f"{d.clase} {d.confianza:.0%}", riesgo, color),
+                        unsafe_allow_html=True)
 
-# 4. Buenas prácticas según altitud
-st.markdown("---")
-st.subheader("📚 Recomendaciones para tu finca")
+    # ── Compradores (lleva a Vender) ──
+    lista = mercado.compradores()
+    de_zona = mercado.compradores_de_zona(lista, finca.departamento) if finca.departamento else []
+    if de_zona:
+        n = len(de_zona)
+        titulo = f"{n} comprador{'es' if n != 1 else ''} busca{'n' if n != 1 else ''} café de tu zona"
+    else:
+        titulo = f"{len(lista)} compradores reciben ofertas en CofiTech"
+    st.markdown(marca.banner(titulo, "Contacto directo, sin intermediarios"
+                             + (" · compradores de demostración" if all(c.es_demo for c in lista) else "")),
+                unsafe_allow_html=True)
+    if ctx.rol == Rol.CAFICULTOR:
+        st.page_link("vistas/vender.py", label="Ir a Vender mi café", icon=":material/storefront:")
 
-if altitud >= 1800:
-    st.markdown(f"""
-**Tu finca está a {altitud:,.0f} msnm — zona de café de altura.** ✨
+with col_der:
+    # ── Tareas del mes ──
+    info = CALENDARIO.get(hoy.month, {})
+    with st.container(border=True):
+        st.markdown(f"**Tareas de {MESES[hoy.month - 1]}** · {info.get('actividad', '—').lower()}")
+        for i, tarea in enumerate(info.get("tareas", [])):
+            st.checkbox(tarea, key=f"tarea_{hoy.year}_{hoy.month}_{i}")
+        if hoy.month in (2, 5, 8, 11):
+            st.warning("Este es mes de fertilización: la fórmula y la cantidad salen del análisis de suelos.")
+        st.caption("Calendario de referencia de la zona andina; cambia por región y altitud. "
+                   + estado_fenologico(hoy, finca.fecha_floracion_principal).capitalize() + ".")
 
-- **Ventaja:** la maduración lenta concentra azúcares → potencial de café especial (>85 SCA).
-- **Variedades recomendadas:** Castillo, Caturra, Geisha (si la tasa el mercado).
-- **Riesgos:** heladas en madrugadas claras, gotera por humedad.
-- **Inversión que más rinde aquí:** cosecha selectiva + beneficio cuidadoso.
-- **Mercado objetivo:** tostadoras especializadas, exportación café especial.
-""")
-elif altitud >= 1200:
-    st.markdown(f"""
-**Tu finca está a {altitud:,.0f} msnm — zona cafetera óptima clásica.**
+    # ── Detalle (sin saturar la pantalla del celular) ──
+    with st.expander("Clima y precio en detalle"):
+        if clima.fase_enso == "Nino":
+            st.error("**El Niño activo.** Reforzar el sombrío, vigilar el estrés hídrico y la roya por estrés.")
+        elif clima.fase_enso == "Nina":
+            st.warning("**La Niña activa.** Revisar drenajes, podas sanitarias para airear y vigilar gotera y roya.")
+        elif clima.fase_enso:
+            st.success("Condiciones ENSO neutras: año típico esperado.")
+        if clima.oni is not None:
+            st.caption(f"ONI {clima.oni:+.2f} ({mes_anio(clima.fecha_enso)}) · fuente: NOAA".replace(".", ",", 1))
+        if sobre_media is not None:
+            if sobre_media > 10:
+                st.success(f"El precio está {sobre_media:.0f} % sobre el promedio de 12 meses: buen momento para vender.")
+            elif sobre_media < -10:
+                st.warning(f"El precio está {abs(sobre_media):.0f} % bajo el promedio de 12 meses: si puedes, espera.")
+            else:
+                st.info("El precio está en su rango normal de los últimos 12 meses.")
 
-- **Ventaja:** condiciones ideales para arábica de buena calidad.
-- **Variedades recomendadas:** Castillo, Colombia, Cenicafé 1 (resistentes a roya).
-- **Riesgos:** roya, broca.
-- **Inversión que más rinde:** fertilización oportuna + variedades resistentes.
-""")
-else:
-    st.markdown(f"""
-**Tu finca está a {altitud:,.0f} msnm — zona baja.**
-
-- **Limitación:** mayor riesgo de plagas (broca, minador) y menor calidad SCA.
-- **Variedades recomendadas:** Castillo resistente, considerar robusta si <800 msnm.
-- **Inversión que más rinde:** control fitosanitario constante.
-""")
-
-st.caption("ℹ Estas recomendaciones son referenciales. Consulta con extensionistas "
-            "de la FNC o tu cooperativa para diagnóstico específico.")
+    with st.expander("Recomendaciones para tu finca"):
+        altitud = finca.altitud_msnm or 0
+        if altitud >= 1800:
+            st.markdown(f"**{_num(altitud)} msnm: café de altura.** La maduración lenta favorece el café especial. "
+                        "Cuida la cosecha selectiva y el beneficio; vigila gotera por humedad.")
+        elif altitud >= 1200:
+            st.markdown(f"**{_num(altitud)} msnm: zona cafetera óptima.** Variedades resistentes a roya "
+                        "(Castillo, Cenicafé 1) y fertilización oportuna según el análisis de suelos.")
+        elif altitud:
+            st.markdown(f"**{_num(altitud)} msnm: zona baja.** Mayor presión de broca y minador: "
+                        "control fitosanitario constante.")
+        st.caption("Recomendaciones de referencia. Para un diagnóstico específico consulta al extensionista "
+                   "del Comité de Cafeteros o de tu cooperativa.")

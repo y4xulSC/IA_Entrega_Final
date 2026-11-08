@@ -10,6 +10,7 @@ Conectado con el resto de la app:
     (KPI «Tasa de resolución del agente RAG»).
 """
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 from pathlib import Path
 from uuid import uuid4
 import sys
@@ -17,7 +18,7 @@ import sys
 from cofitech.contexto_finca import CLASE_SANO, NOMBRES_CLASE, obtener_contexto, prefijo_rag
 from cofitech.telemetria import barra_valoracion, cronometro, registrar_evento_uso
 
-st.set_page_config(page_title="Asistente IA Café", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Asistente IA Café", page_icon=ICONO, layout="wide")
 st.title("🤖 Asistente Conversacional — Sistema IA Café")
 
 PROJECT = Path(__file__).resolve().parents[2]

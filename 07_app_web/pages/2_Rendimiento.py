@@ -12,6 +12,7 @@ from datetime import date
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 
 from cofitech import datos, rendimiento as rend
 from cofitech.telemetria import cronometro, registrar_evento_uso, registrar_una_vez
@@ -19,7 +20,7 @@ from cofitech.contexto_finca import (
     Rol, mes_anio, municipio_activo, obtener_contexto, registrar_prediccion, riesgo_fitosanitario,
 )
 
-st.set_page_config(page_title="Rendimiento", page_icon="🌱", layout="wide")
+st.set_page_config(page_title="Rendimiento", page_icon=ICONO, layout="wide")
 st.title("🌱 Predicción de Rendimiento del Café")
 
 ctx = obtener_contexto()

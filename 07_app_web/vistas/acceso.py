@@ -8,7 +8,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from cofitech import seguridad
+from cofitech import marca, seguridad
 from cofitech.contexto_finca import (
     RANGO_ALTITUD_MSNM, RANGO_AREA_HA, VARIEDADES, Rol,
     actualizar_finca, actualizar_zona, catalogo_municipios, definir_rol, obtener_contexto,
@@ -23,8 +23,11 @@ ctx = obtener_contexto()
 catalogo = catalogo_municipios()
 
 if ctx.rol is None:
-    st.title("CofiTech")
-    st.caption("Datos que impulsan el futuro del café")
+    if marca.RUTA_LOGO.exists():
+        st.image(str(marca.RUTA_LOGO), width=260)    # logo oficial con el lema
+    else:
+        st.title("CofiTech")
+        st.caption(marca.LEMA)
     eleccion = st.radio("¿Cómo vas a usar CofiTech?", list(ROLES), horizontal=True)
     rol = ROLES[eleccion]
 else:

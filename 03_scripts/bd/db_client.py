@@ -372,6 +372,137 @@ def leer_eventos(limite: int = 20000) -> list[dict[str, Any]]:
                 for f, s, r, h, a, m in cur.fetchall()]
 
 
+# ──────────────────────────── Venta directa (RF09) ──────────────────────────
+_COLUMNAS_LOTE = ("id", "fecha", "id_sesion", "municipio", "departamento", "codigo_dane", "altitud_msnm",
+                  "tipo_cafe", "variedad", "cantidad_cargas", "disponible_desde", "precio_esperado_cop_carga",
+                  "precio_fnc_ref_cop_carga", "puntaje_sca", "ultimo_diagnostico", "riesgo_fitosanitario",
+                  "canales", "estado", "es_demo")
+_COLUMNAS_OFERTA = ("id", "id_lote", "id_comprador", "fecha", "origen", "precio_cop_carga", "cantidad_cargas",
+                    "recoge_en_finca", "estado", "es_simulada")
+_COLUMNAS_MENSAJE = ("id_lote", "id_comprador", "fecha", "autor", "texto", "es_simulado")
+
+
+def _filas(cur) -> list[dict[str, Any]]:
+    columnas = [c.name for c in cur.description]
+    return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+
+
+def listar_compradores(solo_activos: bool = True) -> list[dict[str, Any]]:
+    """Compradores de ``cafe.mk_comprador`` (incluye los de demostración, marcados con ``es_demo``)."""
+    sql = f"""
+        SELECT id, nombre, tipo, municipio, departamento, codigo_dane, busca, prima_cop_carga,
+               puntaje_min, cargas_min::float AS cargas_min, activo, es_demo
+          FROM {ESQUEMA}.mk_comprador
+         WHERE activo OR NOT %s
+         ORDER BY es_demo, tipo, nombre
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (bool(solo_activos),))
+        return _filas(cur)
+
+
+def insertar_lote(lote: dict[str, Any]) -> None:
+    """Guarda un lote publicado en ``cafe.mk_lote`` (sin datos personales)."""
+    columnas = [c for c in _COLUMNAS_LOTE if c in lote]
+    sql = (f"INSERT INTO {ESQUEMA}.mk_lote ({', '.join(columnas)}) "
+           f"VALUES ({', '.join(f'%({c})s' for c in columnas)}) ON CONFLICT (id) DO NOTHING")
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, {c: lote[c] for c in columnas})
+
+
+def actualizar_estado_lote(id_lote: str, estado: str) -> bool:
+    sql = f"UPDATE {ESQUEMA}.mk_lote SET estado = %s, actualizado = NOW() WHERE id = %s"
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (estado, id_lote))
+        return cur.rowcount == 1
+
+
+def leer_lotes(id_sesion: Optional[str] = None, limite: int = 500) -> list[dict[str, Any]]:
+    """Lotes más recientes; con ``id_sesion``, solo los de esa sesión."""
+    sql = f"""
+        SELECT id::text AS id, fecha, id_sesion, municipio, departamento, codigo_dane,
+               altitud_msnm::float AS altitud_msnm, tipo_cafe, variedad,
+               cantidad_cargas::float AS cantidad_cargas, disponible_desde, precio_esperado_cop_carga,
+               precio_fnc_ref_cop_carga, puntaje_sca, ultimo_diagnostico, riesgo_fitosanitario,
+               canales, estado, es_demo
+          FROM {ESQUEMA}.mk_lote
+         WHERE %s IS NULL OR id_sesion = %s
+         ORDER BY fecha DESC
+         LIMIT %s
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (id_sesion, id_sesion, int(limite)))
+        return _filas(cur)
+
+
+def insertar_oferta(oferta: dict[str, Any]) -> None:
+    columnas = [c for c in _COLUMNAS_OFERTA if c in oferta]
+    sql = (f"INSERT INTO {ESQUEMA}.mk_oferta ({', '.join(columnas)}) "
+           f"VALUES ({', '.join(f'%({c})s' for c in columnas)}) ON CONFLICT (id) DO NOTHING")
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, {c: oferta[c] for c in columnas})
+
+
+def actualizar_estado_oferta(id_oferta: str, estado: str) -> bool:
+    sql = f"UPDATE {ESQUEMA}.mk_oferta SET estado = %s WHERE id = %s"
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (estado, id_oferta))
+        return cur.rowcount == 1
+
+
+def leer_ofertas(id_lote: str) -> list[dict[str, Any]]:
+    sql = f"""
+        SELECT id::text AS id, id_lote::text AS id_lote, id_comprador, fecha, origen, precio_cop_carga,
+               cantidad_cargas::float AS cantidad_cargas, recoge_en_finca, estado, es_simulada
+          FROM {ESQUEMA}.mk_oferta
+         WHERE id_lote = %s
+         ORDER BY fecha
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (id_lote,))
+        return _filas(cur)
+
+
+def insertar_mensaje(mensaje: dict[str, Any]) -> None:
+    columnas = [c for c in _COLUMNAS_MENSAJE if c in mensaje]
+    sql = (f"INSERT INTO {ESQUEMA}.mk_mensaje ({', '.join(columnas)}) "
+           f"VALUES ({', '.join(f'%({c})s' for c in columnas)})")
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, {c: mensaje[c] for c in columnas})
+
+
+def leer_mensajes(id_lote: str) -> list[dict[str, Any]]:
+    sql = f"""
+        SELECT id_lote::text AS id_lote, id_comprador, fecha, autor, texto, es_simulado
+          FROM {ESQUEMA}.mk_mensaje
+         WHERE id_lote = %s
+         ORDER BY fecha, id
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (id_lote,))
+        return _filas(cur)
+
+
+def lotes_por_municipio(incluir_demo: bool = False):
+    """Oferta publicada por municipio (misma agregación que la vista ``cafe.vw_lotes_zona``)."""
+    import pandas as pd
+
+    sql = f"""
+        SELECT codigo_dane, MAX(municipio) AS municipio, MAX(departamento) AS departamento,
+               COUNT(*) AS lotes, SUM(cantidad_cargas)::float AS cargas,
+               AVG(precio_esperado_cop_carga)::float AS precio_esperado_medio,
+               AVG(precio_fnc_ref_cop_carga)::float AS precio_fnc_medio,
+               COUNT(*) FILTER (WHERE tipo_cafe = 'Especial') AS lotes_especiales,
+               MAX(fecha) AS ultimo_lote
+          FROM {ESQUEMA}.mk_lote
+         WHERE estado IN ('publicado', 'negociando') AND (%s OR NOT es_demo)
+         GROUP BY codigo_dane
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (bool(incluir_demo),))
+        return pd.DataFrame(_filas(cur))
+
+
 def probar_conexion() -> str:
     """Versión del servidor y conteo de filas; lanza ``BaseDatosNoDisponible`` si falla."""
     with _conexion() as conn, conn.cursor() as cur:
@@ -380,7 +511,10 @@ def probar_conexion() -> str:
         cur.execute(f"SELECT (SELECT count(*) FROM {ESQUEMA}.registro_diagnosticos),"
                     f"       (SELECT count(*) FROM {ESQUEMA}.registro_eventos_uso)")
         diagnosticos, eventos = cur.fetchone()
-    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos"
+        cur.execute(f"SELECT to_regclass('{ESQUEMA}.mk_lote') IS NOT NULL")
+        venta = "tablas de venta directa listas" if cur.fetchone()[0] else \
+            "faltan las tablas de venta directa (ejecuta 05_marketplace.sql)"
+    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos · {venta}"
 
 
 if __name__ == "__main__":

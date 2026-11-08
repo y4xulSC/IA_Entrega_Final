@@ -14,12 +14,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 
 from cofitech import precios_ridge
 from cofitech.contexto_finca import mes_anio
 from cofitech.telemetria import cronometro, registrar_evento_uso
 
-st.set_page_config(page_title="Precios", page_icon="💰", layout="wide")
+st.set_page_config(page_title="Precios", page_icon=ICONO, layout="wide")
 st.title("💰 Escenarios de precio del café")
 
 PROJECT = Path(__file__).resolve().parents[2]

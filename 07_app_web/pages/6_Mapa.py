@@ -5,6 +5,7 @@ que el agrónomo elige en la barra global. Sin municipio concreto, encuadra la
 zona de trabajo.
 """
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 import pandas as pd
 from pathlib import Path
 import folium
@@ -12,7 +13,7 @@ from streamlit_folium import st_folium
 
 from cofitech.contexto_finca import Rol, catalogo_municipios, municipio_activo, obtener_contexto
 
-st.set_page_config(page_title="Mapa", page_icon="🗺️", layout="wide")
+st.set_page_config(page_title="Mapa", page_icon=ICONO, layout="wide")
 st.title("🗺️ Mapa Cafetero de Colombia")
 
 PROJECT = Path(__file__).resolve().parents[2]

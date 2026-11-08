@@ -45,7 +45,7 @@ LAMINAS = {
 
 REQUERIMIENTOS = [
     ("RF01", "Ingesta única"), ("RF02", "Diagnóstico visual"), ("RF03", "Prescripción con fuente"),
-    ("RF04", "Rendimiento e ingreso"), ("RF05", "Alertas territoriales"),
+    ("RF04", "Rendimiento e ingreso"), ("RF05", "Alertas territoriales"), ("RF09", "Venta directa"),
     ("RNF01", "Inferencia ≤ 3 s"), ("RNF02", "Usabilidad móvil"), ("RNF03", "Degradación controlada"),
 ]
 
@@ -60,10 +60,12 @@ TRAZA_MOVIL = [
      "RAG con la incidencia del muestreo, fuente Cenicafé y votos Sí/No."),
     (4, "Mi cosecha e ingreso", {"RF04": "●", "RF02": "○", "RF01": "○", "RNF02": "●"},
      "Rendimiento EVA e ingreso con y sin control de la roya."),
-    (5, "Vender · Compradores", {"RF04": "○"}, "Backlog (marketplace): usa el precio FNC de referencia."),
-    (6, "Vender · Publicar lote", {"RF01": "○", "RF02": "○", "RF04": "○"},
-     "Backlog: adjunta solos los datos de la finca y el diagnóstico."),
-    (7, "Vender · Chat comprador", {}, "Backlog: negociación directa, fuera del Producto Funcional."),
+    (5, "Vender · Compradores", {"RF09": "●", "RF04": "○", "RNF02": "●"},
+     "Compradores de la zona y su prima sobre el precio FNC."),
+    (6, "Vender · Publicar lote", {"RF09": "●", "RF01": "○", "RF02": "○", "RF04": "○", "RNF03": "●"},
+     "Finca y diagnóstico se adjuntan solos; sin red, queda en respaldo local."),
+    (7, "Vender · Chat comprador", {"RF09": "●", "RNF02": "●"},
+     "Oferta formal con total; aceptar o contraofertar en el chat."),
 ]
 TRAZA_WEB = [
     (1, "Mi zona de trabajo", {"RF01": "●", "RF05": "○"},
@@ -78,6 +80,8 @@ TRAZA_WEB = [
      "Zona e incidencia viajan a la pregunta; umbral 5 %, sin dosis."),
     (6, "Alerta epidemiológica", {"RF05": "●", "RF03": "○"},
      "Municipios priorizados y acciones de campo sin prescripción química."),
+    (7, "Oferta de café en mi zona", {"RF09": "●", "RNF03": "●"},
+     "Cargas y precio pedido por municipio (pantalla nueva de la app)."),
 ]
 
 CSS_TABLERO = """
@@ -341,13 +345,13 @@ def construir() -> str:
                          "una sola finca compartida por Visión, Clima, Precios y RAG")
 
     t_movil, cob_m = _tabla_traza("Vista Caficultor · móvil (7 pasos, lámina de Sofía Gómez)",
-                                  "Pasos 5–7 (Vender) son backlog: no están en RF01–RF05 y no forman parte del Producto Funcional.",
+                                  "Pasos 5–7 (Vender) implementados como RF09, con compradores de demostración.",
                                   TRAZA_MOVIL)
-    t_web, cob_w = _tabla_traza("Vista Agrónomo / Cooperativa · web B2B (6 pasos)",
+    t_web, cob_w = _tabla_traza("Vista Agrónomo / Cooperativa · web B2B (6 pasos de la lámina + 1)",
                                 "Consume los diagnósticos que envían los caficultores: aquí nace el valor B2B (C2).",
                                 TRAZA_WEB)
     sin_cubrir = [c for c, _ in REQUERIMIENTOS if not (cob_m[c] + cob_w[c])]
-    cobertura_txt = ("Los 8 requerimientos tienen al menos una pantalla que los implementa."
+    cobertura_txt = ("Los 9 requerimientos tienen al menos una pantalla que los implementa."
                      if not sin_cubrir else f"Sin pantalla que lo implemente: {', '.join(sin_cubrir)}.")
 
     sens = r["sensibilidad"]["C4"]["cambios_de_ganador"]
@@ -396,7 +400,7 @@ def construir() -> str:
 
  <div class="seccion"><div class="paso"><span class="n">3</span>Trazabilidad del MockUp ganador → requerimientos <small><span class="lleno" style="width:11px;height:11px;vertical-align:-1px"></span> implementa o se verifica en esa pantalla · <span class="vacio" style="width:11px;height:11px;vertical-align:-1px"></span> usa el resultado de ese requerimiento</small></div>
   <div class="fila-tr">{t_movil}{t_web}</div>
-  <div class="t b7 verde-t" style="font-size:14px">{escape(cobertura_txt)} RF01–RF05 y RNF01–RNF03 según Especificacion_sistema_CofiTech.md.</div>
+  <div class="t b7 verde-t" style="font-size:14px">{escape(cobertura_txt)} RF01–RF05, RF09 y RNF01–RNF03 según Especificacion_sistema_CofiTech.md.</div>
  </div>
 
  <div class="pie-t"><span>Cálculo: 03_scripts/ahp/ahp_cofitech.py (vector propio principal, juicios v2 del equipo CofiTech) · detalle en AHP_seleccion_mockup.md</span><span>Generado con 00_documentos/mockups_src/tablero_ahp.py</span></div>

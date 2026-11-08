@@ -3,7 +3,9 @@
 Tres piezas hacen que las pantallas se lean como un solo producto:
 
 1. ``MENU``: qué pantallas ve cada rol y en qué sección. Las 9 pantallas
-   originales siguen existiendo; aquí solo se decide dónde aparecen.
+   originales siguen existiendo; aquí solo se decide dónde aparecen. «Vender
+   mi café» y «Oferta de café en mi zona» son los pasos 5–7 del MockUp
+   ganador (venta directa, RF09).
 2. ``barra_contexto``: franja fija arriba de TODAS las pantallas con la finca
    (o zona), el clima, el precio y el último diagnóstico.
 3. ``siguiente_paso``: enlace al final de cada pantalla hacia el paso que
@@ -46,7 +48,8 @@ MENU: dict[Rol, list[Pantalla]] = {
         Pantalla("diagnostico", "pages/4_Enfermedades.py", "Revisar una hoja", ":material/photo_camera:", "Mi finca"),
         Pantalla("que_hago", "pages/5_Chatbot.py", "¿Qué hago?", ":material/forum:", "Mi finca"),
         Pantalla("cosecha", "pages/2_Rendimiento.py", "Mi cosecha e ingreso", ":material/agriculture:", "Mi finca"),
-        Pantalla("venta", "pages/7_Calidad_SCA.py", "¿A cómo vendo?", ":material/sell:", "Mi finca"),
+        Pantalla("venta", "vistas/vender.py", "Vender mi café", ":material/storefront:", "Mi finca"),
+        Pantalla("sca", "pages/7_Calidad_SCA.py", "Calidad y primas (SCA)", ":material/sell:", "Más"),
         Pantalla("mapa", "pages/6_Mapa.py", "Mi zona en el mapa", ":material/map:", "Más"),
         Pantalla("perfil", "vistas/acceso.py", "Datos de mi finca", ":material/edit:", "Más"),
     ],
@@ -55,10 +58,11 @@ MENU: dict[Rol, list[Pantalla]] = {
         Pantalla("dashboard", "pages/1_Dashboard.py", "Indicadores municipales", ":material/monitoring:", "Panorama regional"),
         Pantalla("alertas", "vistas/alertas_fitosanitarias.py", "Alertas fitosanitarias", ":material/warning:", "Sanidad"),
         Pantalla("diagnostico", "pages/4_Enfermedades.py", "Diagnóstico por imagen", ":material/photo_camera:", "Sanidad"),
+        Pantalla("lotes", "vistas/lotes_zona.py", "Oferta de café en mi zona", ":material/storefront:", "Mercado"),
         Pantalla("rendimiento", "pages/2_Rendimiento.py", "Rendimiento municipal", ":material/agriculture:", "Modelos"),
         Pantalla("precios", "pages/3_Precios.py", "Escenarios de precios", ":material/show_chart:", "Modelos"),
         Pantalla("anomalias", "vistas/anomalias_precios.py", "Detección de anomalías", ":material/troubleshoot:", "Modelos"),
-        Pantalla("sca", "pages/7_Calidad_SCA.py", "Primas por calidad (SCA)", ":material/sell:", "Modelos"),
+        Pantalla("sca", "pages/7_Calidad_SCA.py", "Primas por calidad (SCA)", ":material/sell:", "Mercado"),
         Pantalla("rag", "pages/5_Chatbot.py", "Consola técnica (RAG)", ":material/forum:", "Consulta"),
         Pantalla("calendario", "pages/8_Asesor_Caficultor.py", "Calendario del caficultor", ":material/calendar_month:", "Consulta"),
         Pantalla("perfil", "vistas/acceso.py", "Mi zona de trabajo", ":material/edit:", "Mi cuenta"),
@@ -76,7 +80,7 @@ ADMINISTRACION: list[Pantalla] = [
 # Recorrido principal de cada rol: de cada pantalla sale un enlace a la siguiente.
 FLUJO: dict[Rol, list[str]] = {
     Rol.CAFICULTOR: ["inicio", "diagnostico", "que_hago", "cosecha", "venta"],
-    Rol.AGRONOMO: ["mapa", "dashboard", "alertas", "rendimiento", "precios", "anomalias", "rag"],
+    Rol.AGRONOMO: ["mapa", "dashboard", "alertas", "lotes", "rendimiento", "precios", "anomalias", "rag"],
 }
 
 ETIQUETA_ROL: dict[Rol, str] = {
@@ -226,7 +230,7 @@ def _etiqueta_siguiente(ctx: ContextoFinca, actual: str, titulo_destino: str) ->
         if actual == "que_hago":
             return "Siguiente: ¿cuánto afecta esto mi cosecha y mi ingreso?"
         if actual == "cosecha":
-            return "Siguiente: ¿a cómo puedo vender?"
+            return "Siguiente: ¿a quién le vendo? Compradores sin intermediarios"
     return f"Siguiente: {titulo_destino}"
 
 
