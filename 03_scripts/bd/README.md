@@ -25,6 +25,7 @@ Se lee desde `.env` en la raíz del proyecto:
 | `03_supabase_schema.sql` | Versión del DDL para el SQL Editor de Supabase + tablas de la app (ver sección Supabase) |
 | `db_client.py` | Cliente de la app Streamlit para Supabase |
 | `04_vistas_kpis.sql` | Solo las vistas de KPIs (`telemetria_kpis`, `vw_kpis_consolidados`), para bases que ya tenían el esquema v1.3 |
+| `05_marketplace.sql` | Solo la venta directa (RF09): `mk_comprador`, `mk_lote`, `mk_oferta`, `mk_mensaje`, vista `vw_lotes_zona` y la herramienta `Mercado` en la telemetría, para bases que ya tenían el esquema v1.4 |
 
 ## Flujo recomendado
 
@@ -81,7 +82,7 @@ SELECT * FROM cafe.vw_master_municipal_mensual LIMIT 5;
 
 ## Supabase (nube, sin Docker)
 
-La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`), el 👍/👎 del caficultor y la telemetría con las calificaciones del chat (`cafe.registro_eventos_uso`, vista `cafe.vw_feedback_rag`). El mapa de **Alertas fitosanitarias** (rol Agrónomo / Cooperativa) lee de ahí y se refresca cada 30 s. Si la base no responde, la app sigue con los archivos locales de `05_resultados/logs/` y lo avisa en pantalla.
+La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`), el 👍/👎 del caficultor y la telemetría con las calificaciones del chat (`cafe.registro_eventos_uso`, vista `cafe.vw_feedback_rag`). El mapa de **Alertas fitosanitarias** (rol Agrónomo / Cooperativa) lee de ahí y se refresca cada 30 s. Desde la v1.5 también guarda la **venta directa** (pantalla «Vender mi café»): los lotes que publican los caficultores (`cafe.mk_lote`, sin nombre ni teléfono: solo un id de sesión aleatorio), las ofertas (`cafe.mk_oferta`, con el total calculado en la base) y el chat (`cafe.mk_mensaje`). Los compradores sembrados en `cafe.mk_comprador` son **ficticios** (`es_demo = true`) y la app responde por ellos; un comprador real se registra con `es_demo = false`. Si la base no responde, la app sigue con los archivos locales de `05_resultados/logs/` y lo avisa en pantalla.
 
 | Archivo | Función |
 |---------|---------|
@@ -89,7 +90,9 @@ La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`)
 | `db_client.py` | Cliente de la app (psycopg2 con pool, reintento en pausa de 60 s, `connect_timeout` de 5 s) |
 
 ### Paso 1 — Crear las tablas
-Supabase → **SQL Editor** → **New query** → pegar todo `03_supabase_schema.sql` → **Run**. La última fila dice `OK · esquema cafe con 14 tablas…`.
+Supabase → **SQL Editor** → **New query** → pegar todo `03_supabase_schema.sql` → **Run**. La última fila dice `OK (v1.5) · esquema cafe con 18 tablas…; 5 compradores`.
+
+**¿Ya tenías la v1.4?** Basta con ejecutar `05_marketplace.sql` (crea las 4 tablas de venta directa y amplía el CHECK de `registro_eventos_uso.herramienta` con `'Mercado'`). También puedes volver a ejecutar `03_supabase_schema.sql` completo: no borra datos. Ambos se probaron dos veces seguidas en PostgreSQL 16 y 18. Si faltan las tablas, `python 03_scripts/bd/db_client.py` lo dice y la app guarda la venta en `05_resultados/marketplace/`.
 
 Seguridad: el esquema `cafe` no se publica en la Data API, tiene RLS activado sin políticas y se le retiran los permisos a `anon` y `authenticated`. La llave pública (`anon key`) de Supabase no puede leerlo; solo la app con la contraseña de la base.
 
@@ -154,9 +157,12 @@ pg_dump -U postgres -h localhost -d cafe_ia -n cafe -F c -f cafe_ia_backup.dump
 pg_restore -U postgres -h localhost -d cafe_ia -c cafe_ia_backup.dump
 ```
 
+`-n cafe` respalda todo el esquema, incluidas las tablas de la app (`registro_*` y `mk_*`). Para Supabase use la cadena del *Session pooler*: `pg_dump "postgresql://postgres.<ref>:<clave>@aws-<n>-<región>.pooler.supabase.com:5432/postgres" -n cafe -F c -f cofitech_supabase.dump`. Sin base, el respaldo de la app son los archivos de `05_resultados/logs/` (diagnósticos y telemetría) y `05_resultados/marketplace/` (lotes, ofertas y mensajes).
+
 ## Versionado
 
 | Versión | Fecha | Cambio |
 |---------|-------|--------|
 | 1.0 | 2026-05 | Esquema inicial |
 | 1.1 | 2026-05 | Alineado con `*_validado.csv` (USD/kg, viento, radiación, surge_flag); carga lee de `procesados/`; `.env` + logging real |
+| 1.5 (Supabase) | 2026-10 | Venta directa: `mk_comprador`, `mk_lote`, `mk_oferta`, `mk_mensaje`, `vw_lotes_zona`; herramienta `Mercado` en la telemetría; migración `05_marketplace.sql` |

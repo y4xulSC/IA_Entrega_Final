@@ -38,35 +38,36 @@ Sensibilidad: la Op3 gana con cualquier peso de C1, C2 o C3. Solo la superaría 
 
 > **Por qué el tablero no muestra 0,596 · 0,297 · 0,232.** Esos tres valores suman 1,125, y en una síntesis AHP distributiva los puntajes globales siempre suman 1. Ningún conjunto de matrices puede producirlos. Los valores correctos, con los juicios v2 del equipo, son 0,592 · 0,255 · 0,152, y el ranking no cambia.
 
-## 3. Trazabilidad del MockUp ganador → RF01–RF05 y RNF01–RNF03
+## 3. Trazabilidad del MockUp ganador → RF01–RF05, RF09 y RNF01–RNF03
 
-● = la pantalla implementa el requerimiento o es donde se verifica · ○ = la pantalla usa el resultado de ese requerimiento.
+● = la pantalla implementa el requerimiento o es donde se verifica · ○ = la pantalla usa el resultado de ese requerimiento. RF09 (venta directa) se agregó el 19-oct-2026, cuando la app implementó los pasos 5–7.
 
 **Vista Caficultor · móvil (lámina de Sofía Gómez)**
 
-| Paso | RF01 | RF02 | RF03 | RF04 | RF05 | RNF01 | RNF02 | RNF03 | Evidencia en la pantalla |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| 1 Hoy en mi finca | ● | | | ● | | | ● | | Finca fija arriba (municipio, altitud, área) y precio FNC del día |
-| 2 Revisar una hoja | ○ | ● | | | | ● | ● | | Grad-CAM, confianza y muestreo de la finca; p95 = 0,65 s en CPU |
-| 3 ¿Qué hago? | ○ | | ● | | | | ● | ● | RAG con la incidencia del muestreo, fuente Cenicafé y votos Sí/No |
-| 4 Mi cosecha e ingreso | ○ | ○ | | ● | | | ● | | Rendimiento EVA e ingreso con y sin control de la roya |
-| 5 Vender · Compradores | | | | ○ | | | | | *Backlog (marketplace)*: usa el precio FNC de referencia |
-| 6 Vender · Publicar lote | ○ | ○ | | ○ | | | | | *Backlog*: adjunta solos los datos de la finca y el diagnóstico |
-| 7 Vender · Chat comprador | | | | | | | | | *Backlog*: negociación directa, fuera del Producto Funcional |
+| Paso | RF01 | RF02 | RF03 | RF04 | RF05 | RF09 | RNF01 | RNF02 | RNF03 | Evidencia en la pantalla |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| 1 Hoy en mi finca | ● | | | ● | | | | ● | | Finca fija arriba (municipio, altitud, área) y precio FNC del día |
+| 2 Revisar una hoja | ○ | ● | | | | | ● | ● | | Grad-CAM, confianza y muestreo de la finca; p95 = 0,65 s en CPU |
+| 3 ¿Qué hago? | ○ | | ● | | | | | ● | ● | RAG con la incidencia del muestreo, fuente Cenicafé y votos Sí/No |
+| 4 Mi cosecha e ingreso | ○ | ○ | | ● | | | | ● | | Rendimiento EVA e ingreso con y sin control de la roya |
+| 5 Vender · Compradores | | | | ○ | | ● | | ● | | Compradores de la zona y su prima sobre el precio FNC |
+| 6 Vender · Publicar lote | ○ | ○ | | ○ | | ● | | | ● | Finca y diagnóstico se adjuntan solos; sin red, queda en respaldo local |
+| 7 Vender · Chat comprador | | | | | | ● | | ● | | Oferta formal con total; aceptar o contraofertar en el chat |
 
-**Vista Agrónomo / Cooperativa · web B2B**
+**Vista Agrónomo / Cooperativa · web B2B** (los 6 pasos de la lámina + la pantalla nueva de oferta por municipio)
 
-| Paso | RF01 | RF02 | RF03 | RF04 | RF05 | RNF01 | RNF02 | RNF03 | Evidencia en la pantalla |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| 1 Mi zona de trabajo | ● | | | | ○ | | | | Barra de contexto fija; zona única; municipios con DIVIPOLA |
-| 2 Alertas fitosanitarias | | ○ | | | ● | | | ● | Mapa de calor de las fotos de campo; en vivo cada 30 s con respaldo local |
-| 3 Indicadores municipales | | ○ | | ● | | | | ● | Serie EVA con fuente y año; impacto de la roya según Cenicafé |
-| 4 Escenarios de precio | | | | ● | | | | ○ | Simulador Ridge validado (MAPE 2,5 %) con rango probable |
-| 5 Consola técnica (RAG) | ○ | | ● | | | | | ● | Zona e incidencia viajan a la pregunta; umbral 5 %, sin dosis |
-| 6 Alerta epidemiológica | | | ○ | | ● | | | | Municipios priorizados y acciones de campo sin prescripción química |
+| Paso | RF01 | RF02 | RF03 | RF04 | RF05 | RF09 | RNF01 | RNF02 | RNF03 | Evidencia en la pantalla |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| 1 Mi zona de trabajo | ● | | | | ○ | | | | | Barra de contexto fija; zona única; municipios con DIVIPOLA |
+| 2 Alertas fitosanitarias | | ○ | | | ● | | | | ● | Mapa de calor de las fotos de campo; en vivo cada 30 s con respaldo local |
+| 3 Indicadores municipales | | ○ | | ● | | | | | ● | Serie EVA con fuente y año; impacto de la roya según Cenicafé |
+| 4 Escenarios de precio | | | | ● | | | | | ○ | Simulador Ridge validado (MAPE 2,5 %) con rango probable |
+| 5 Consola técnica (RAG) | ○ | | ● | | | | | | ● | Zona e incidencia viajan a la pregunta; umbral 5 %, sin dosis |
+| 6 Alerta epidemiológica | | | ○ | | ● | | | | | Municipios priorizados y acciones de campo sin prescripción química |
+| 7 Oferta de café en mi zona | | | | | | ● | | | ● | Cargas y precio pedido por municipio |
 
-**Cobertura:** cada uno de los 8 requerimientos tiene al menos una pantalla que lo implementa. RNF01 se verifica en un solo paso, el diagnóstico por foto, y RNF02 solo en la vista móvil. La consola web no tiene requisito de usabilidad móvil.
+**Cobertura:** cada uno de los 9 requerimientos tiene al menos una pantalla que lo implementa. RNF01 se verifica en un solo paso, el diagnóstico por foto, y RNF02 solo en la vista móvil: la consola web no tiene requisito de usabilidad móvil.
 
-**Lectura para la defensa:** los pasos 5 a 7 de la lámina móvil (Vender) son una propuesta de valor válida para C2, pero no están en RF01–RF05 ni en el Producto Funcional. Conviene presentarlos como *backlog* (hipótesis de marketplace) para que el evaluador no los busque en la app.
+**Lectura para la defensa:** los pasos 5 a 7 (Vender) ya están en la app como RF09. Los compradores son **de demostración**, la app responde por ellos y la pantalla lo dice siempre. Lo que se valida es el flujo y la red de datos que recibe la cooperativa, no compradores reales. No conviene presentarlos como si lo fueran.
 
 Definiciones de RF y RNF: `Especificacion_sistema_CofiTech.md`. Matrices, juicios y control de cambios del AHP: `AHP_seleccion_mockup.md`.

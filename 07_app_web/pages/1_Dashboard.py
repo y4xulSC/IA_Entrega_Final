@@ -7,13 +7,14 @@ Fuentes (cada indicador lee la suya; ya no se adivinan columnas por nombre):
   · ENSO: ONI medio anual.
 """
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 import pandas as pd
 import plotly.express as px
 
 from cofitech import datos
 from cofitech.contexto_finca import obtener_contexto
 
-st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Dashboard", page_icon=ICONO, layout="wide")
 st.title("📊 Dashboard Agroclimático del Café Colombia")
 
 COLOR_SERIE = "#6F4E37"   # color primario de la app; una sola serie por gráfico

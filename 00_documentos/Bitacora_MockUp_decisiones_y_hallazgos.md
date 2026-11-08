@@ -1,6 +1,6 @@
 # CofiTech · Bitácora del MockUp: decisiones y hallazgos
 
-Actualizado: 2026-10-15. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_rag/` y `03_scripts/bd/`.
+Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_rag/`, `03_scripts/bd/` y `03_scripts/ahp/`.
 
 ## Decisiones tomadas
 
@@ -29,6 +29,10 @@ Actualizado: 2026-10-15. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 | Respaldo sin nube | Todo se guarda también en `05_resultados/logs/` (diagnósticos, votos, eventos). Si Supabase no responde, las pantallas leen los archivos locales y lo avisan. |
 | Mapa de alertas (Agrónomo) | `vistas/alertas_fitosanitarias.py`: mapa de calor folium de fotos con roya por municipio, semáforo por % de fotos con roya, periodo seleccionable, se relee cada 30 s (`st.fragment(run_every)`). No cuenta los diagnósticos rechazados con 👎 ni los simulados (opcional). La barra superior usa el mismo conteo (30 días). |
 | Coordenadas municipales | Las 21 cabeceras de `geografia_validado.csv`; el resto, de DIVIPOLA (DANE) con `03_scripts/descarga/08_descargar_divipola.py` → `01_datos/procesados/divipola_municipios.csv`. |
+| Selección del MockUp (AHP v2, 19-oct-2026) | Vector propio principal exacto en `03_scripts/ahp/ahp_cofitech.py`. Dos juicios de la matriz de criterios cambian (C1 vs C2 = 1, C1 vs C4 = 4) para que los pesos coincidan con la diapositiva (0,386 · 0,274 · 0,227 · 0,113; CR = 0,023). Op3 = 0,592, Op2 = 0,255, Op1 = 0,152. Tablero `CofiTech_AHP_Seleccion_Mockup.png`. Las cifras 0,596 · 0,297 · 0,232 no son posibles: suman 1,125. |
+| Identidad visual en la app | Logo oficial recortado sin redibujar (`07_app_web/assets/generar_logos.py`): emblema como ícono de pestaña, logo horizontal en la barra lateral (`st.logo`), logo completo en el ingreso. Tema de `config.toml` con los tokens de la lámina de Sofía e Inter servida localmente (`static/fonts`), sin depender de internet. |
+| Inicio del caficultor | «Hoy en mi finca» rehecha como la lámina de Sofía: tarjeta café con el precio FNC y su variación, clima y última hoja, tareas del mes y aviso de compradores. Ya no pide municipio, altitud ni área en la barra lateral: cumplía mal RF01. |
+| Venta directa (RF09) | Pasos 5–7 del MockUp implementados: «Vender mi café» (compradores, publicar lote, mis lotes y chat con oferta formal, aceptar / rechazar / contraofertar) y, para la cooperativa, «Oferta de café en mi zona». Tablas `cafe.mk_comprador`, `mk_lote`, `mk_oferta` (total calculado en la base), `mk_mensaje` y vista `vw_lotes_zona` (v1.5 del esquema o migración `05_marketplace.sql`, probadas dos veces en PostgreSQL 16 y 18). Respaldo local en `05_resultados/marketplace/`. Telemetría con la herramienta `Mercado` (sin texto de los mensajes). Sin nombre, teléfono ni documento del caficultor. |
 
 ## Hallazgos de auditoría que afectan la sustentación
 
@@ -49,11 +53,14 @@ Actualizado: 2026-10-15. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 15. **El mapa de alertas mide % de fotos con roya, no incidencia en el lote:** quien fotografía elige hojas con síntomas. Sirve para priorizar visitas; la decisión de control sigue siendo el muestreo con umbral del 5 %.
 16. **La persistencia se probó contra PostgreSQL 16 y 18 locales con los roles de Supabase, no contra un proyecto Supabase real.** Falta la prueba con la cadena del pooler del equipo.
 17. **Los roles Caficultor y Agrónomo no tienen autenticación:** cualquiera puede elegir «Agrónomo» y ver los reportes de todos los caficultores. Solo la administración está protegida. Se resuelve con usuarios en base de datos (Supabase Auth) o `st.login`.
+18. **Los compradores de la venta directa son ficticios** (cinco, marcados «(demo)») y la app responde por ellos con reglas fijas (prima sobre FNC, margen de negociación de 1,25 × la prima). Valida el flujo, no la demanda real; la pantalla lo dice. Sin autenticación (punto 17), un lote publicado solo lo ve la sesión que lo creó.
+19. **AppTest no maneja `st.segmented_control` de selección única** (falla al volver a ejecutar): Vender usa `st.radio` horizontal. Con Streamlit 1.49 cuatro pruebas antiguas de `test_seguridad.py` fallan porque `AppTest.switch_page` ya no lanza error para páginas no registradas; con 1.65 pasan las 80.
 
 ## Pendiente
 
 - Generar la contraseña de administrador (`python 07_app_web/cofitech/seguridad.py`) y poner el hash en `.env`.
-- Crear el proyecto Supabase, ejecutar `03_supabase_schema.sql` (v1.4), poner la cadena del pooler en `secrets.toml` y probar con `python 03_scripts/bd/db_client.py`.
+- Crear el proyecto Supabase, ejecutar `03_supabase_schema.sql` (v1.5; si ya estaba la v1.4, basta `05_marketplace.sql`), poner la cadena del pooler en `secrets.toml` y probar con `python 03_scripts/bd/db_client.py`.
+- Conseguir al menos un comprador real (cooperativa o tostadora) que acepte registrarse para reemplazar los de demostración.
 - Ejecutar `08_descargar_divipola.py` (datos.gov.co) para ubicar todos los municipios en el mapa.
 - Decidir cómo se presenta NB09 y su R² en la ficha técnica, el RAG y la presentación.
 - Copiar PDF de Cenicafé a `documentos_fuente/cenicafe/` y reindexar.

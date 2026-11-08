@@ -17,6 +17,8 @@ Utilidades:
     cofitech/prescripcion.py    manejo de roya por incidencia (sin dosis en el código)
     cofitech/precios_ridge.py   simulador Ridge de precio interno
     cofitech/telemetria.py      registrar_evento_uso y botones 👍/👎 (KPIs)
+    cofitech/mercado.py         venta directa: lotes, ofertas y chat con compradores (RF09)
+    cofitech/marca.py           logo oficial y tarjetas del MockUp ganador
     cofitech/repositorio.py     persistencia (Supabase + archivo local)
     cofitech/seguridad.py       acceso de administrador
 """
@@ -27,7 +29,7 @@ from dataclasses import asdict
 
 import streamlit as st
 
-from cofitech import repositorio, seguridad
+from cofitech import marca, repositorio, seguridad
 
 from cofitech import navegacion as nav
 from cofitech.contexto_finca import obtener_contexto, registrar_diagnostico, reiniciar_muestreo
@@ -47,6 +49,20 @@ def _version_streamlit() -> tuple[int, int]:
     return int(mayor), int(menor)
 
 
+def _simular_lote() -> None:
+    from cofitech import mercado
+
+    ctx = obtener_contexto()
+    precio = round(ctx.mercado.precio_fnc_cop_carga or 2_500_000)
+    lote = mercado.Lote(tipo_cafe="Pergamino seco", cantidad_cargas=20, precio_esperado_cop_carga=mercado.redondear(precio * 1.05),
+                        precio_fnc_ref_cop_carga=precio, municipio=ctx.finca.municipio or "Sevilla",
+                        departamento=ctx.finca.departamento or "Valle del Cauca",
+                        codigo_dane=ctx.finca.codigo_dane or ("76736" if not ctx.finca.municipio else None),
+                        altitud_msnm=ctx.finca.altitud_msnm, es_demo=True)
+    mercado.publicar_lote(lote)
+    mercado.refrescar()
+
+
 def _panel_esqueleto() -> None:
     with st.sidebar.expander("Depuración · estado compartido"):
         st.caption(f"Supabase: {repositorio.db_client.estado()}")
@@ -59,10 +75,14 @@ def _panel_esqueleto() -> None:
         if st.button("Reiniciar muestreo", use_container_width=True):
             reiniciar_muestreo()
             st.rerun()
+        if st.button("Simular lote publicado", use_container_width=True,
+                     help="Lote de prueba (es_demo) en el municipio de la finca, para ensayar Vender y la consola."):
+            _simular_lote()
+            st.rerun()
         st.json(json.loads(json.dumps(asdict(obtener_contexto()), default=str)), expanded=1)
 
 
-st.set_page_config(page_title="CofiTech", page_icon="☕", layout="wide")
+st.set_page_config(page_title="CofiTech", page_icon=marca.ICONO, layout="wide")
 
 if _version_streamlit() < VERSION_MINIMA:
     st.error(
@@ -70,6 +90,8 @@ if _version_streamlit() < VERSION_MINIMA:
         f"(instalado: {st.__version__}). Ejecuta: pip install -U streamlit"
     )
     st.stop()
+
+marca.aplicar()                              # logo oficial en la barra lateral + estilos del MockUp
 
 ctx = obtener_contexto()
 

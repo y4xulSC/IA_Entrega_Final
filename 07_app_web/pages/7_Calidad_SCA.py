@@ -1,9 +1,11 @@
 """Calculadora SCA → precio estimado por kilo de café pergamino seco."""
 import streamlit as st
+from cofitech.contexto_finca import obtener_contexto
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 import pandas as pd
 from pathlib import Path
 
-st.set_page_config(page_title="Calidad SCA", page_icon="☕", layout="wide")
+st.set_page_config(page_title="Calidad SCA", page_icon=ICONO, layout="wide")
 st.title("☕ Calculadora SCA → Precio del Café")
 
 st.markdown("""
@@ -52,11 +54,13 @@ with col1:
                                      help="125 kg = 1 carga estándar")
 
 with col2:
+    # RF01: el precio FNC ya está en el contexto compartido; solo se pide si falta.
+    precio_ctx = obtener_contexto().mercado.precio_fnc_cop_carga
     precio_base_carga = st.number_input(
         "Precio FNC base actual (COP / carga 125kg)",
         min_value=500_000, max_value=5_000_000,
-        value=2_800_000, step=50_000,
-        help="Consulta el precio de hoy en federaciondecafeteros.org")
+        value=int(min(max(precio_ctx or 2_800_000, 500_000), 5_000_000)), step=50_000,
+        help="Precargado con el último precio interno FNC de CofiTech; puedes ajustarlo.")
     precio_base_kg = precio_base_carga / 125
 
 # Cálculo

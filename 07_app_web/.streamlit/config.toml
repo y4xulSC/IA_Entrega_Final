@@ -1,14 +1,54 @@
+# Tema del MockUp ganador (lámina de Sofía): pergamino, café y verde.
+# Los tokens son los mismos de 00_documentos/mockups_src/sistema.py.
 [theme]
-primaryColor = "#6F4E37"
-backgroundColor = "#FAFAFA"
-secondaryBackgroundColor = "#F0EBE3"
-textColor = "#3E2723"
-font = "sans serif"
+base = "light"
+primaryColor = "#6B4A35"
+backgroundColor = "#FAF7F2"
+secondaryBackgroundColor = "#F1EBE1"
+textColor = "#2C1A11"
+linkColor = "#2E6F40"
+borderColor = "#E6DCCF"
+showWidgetBorder = true
+baseRadius = "0.75rem"
+buttonRadius = "0.75rem"
+font = "Inter, sans-serif"
+headingFont = "Inter, sans-serif"
+chartCategoricalColors = ["#6B4A35", "#2E6F40", "#E5A93B", "#4A7FA8", "#B5462F", "#A9B98E", "#8C6B55"]
+
+# Inter se sirve desde 07_app_web/static/fonts: funciona sin internet (zonas con 3G).
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-400-normal.woff2"
+weight = 400
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-600-normal.woff2"
+weight = 600
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-700-normal.woff2"
+weight = 700
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-800-normal.woff2"
+weight = 800
+style = "normal"
+
+[theme.sidebar]
+backgroundColor = "#F3EFE6"
+secondaryBackgroundColor = "#FFFFFF"
 
 [server]
 maxUploadSize = 50
 enableCORS = true
 enableXsrfProtection = true
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

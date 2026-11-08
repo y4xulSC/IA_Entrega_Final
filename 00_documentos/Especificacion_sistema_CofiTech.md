@@ -73,6 +73,7 @@ La alternativa seleccionada mediante AHP (puntaje global 0,5839) es una aplicaci
 | **RF06** | **Persistencia con respaldo.** Diagnósticos, votos y eventos se guardan en PostgreSQL (Supabase) y en archivos locales. Si la base no responde, la app sigue funcionando con los archivos y lo avisa en pantalla. | Debe · ✅ |
 | **RF07** | **Control de acceso administrativo.** Telemetría, Ficha técnica de modelos y el panel de depuración solo son visibles con contraseña de administrador. La contraseña se guarda como *hash* PBKDF2-SHA256, con bloqueo tras 5 intentos fallidos y bitácora de accesos. | Debe · ✅ |
 | **RF08** | **Detección de anomalías de precio.** Alerta de meses con variación atípica del precio interno e ICO (volatilidad móvil de 6 meses, umbral en el percentil 97,5 de la historia previa, sin usar datos futuros). | Debería · ✅ |
+| **RF09** | **Venta directa (pasos 5–7 del MockUp ganador).** El caficultor publica un lote (tipo de café, cargas, fecha, variedad, puntaje SCA opcional y precio esperado frente al FNC). Los datos de la finca y el último diagnóstico se adjuntan solos (RF01). Los compradores interesados hacen una oferta formal con el total calculado, que se puede aceptar, rechazar o contraofertar en un chat por lote. La cooperativa ve la oferta de café por municipio de su zona («Oferta de café en mi zona»). Sin nombre, teléfono ni documento del caficultor (Ley 1581). Tablas `cafe.mk_comprador`, `mk_lote`, `mk_oferta` y `mk_mensaje`, con respaldo en `05_resultados/marketplace/`. **Los compradores del prototipo son ficticios** y la app responde por ellos con reglas simples; la pantalla lo dice siempre. | Debería · ✅ (con compradores de demostración) |
 
 ---
 
@@ -160,6 +161,7 @@ Frente a la práctica actual del caficultor (diagnóstico a ojo o espera del ext
 | RF05 | Hipótesis B2B2C | C2, C3 | `vistas/alertas_fitosanitarias.py` |
 | RF06 / RNF03 | Medición de todos los KPI | C4 | `03_scripts/bd/db_client.py`, `cofitech/repositorio.py` |
 | RF07 / RNF04 | — | C4 | `cofitech/seguridad.py` |
+| RF09 | Hipótesis B2B2C (red de datos de campo) | C1, C2, C3 | `cofitech/mercado.py`, `vistas/vender.py`, `vistas/lotes_zona.py` |
 | RNF01 | Confianza Aceptada | C4 | `cofitech/telemetria.py` (`tiempo_respuesta_s`) |
 | RNF02 | KR2 | C1 | `cofitech/navegacion.py`, vistas del Caficultor |
 
@@ -169,6 +171,7 @@ Frente a la práctica actual del caficultor (diagnóstico a ojo o espera del ext
 2. Incorporar documentos de Cenicafé validados al corpus del RAG y reindexar.
 3. Prueba de usabilidad con caficultores en celular (RNF02, KR2).
 4. Habilitar el registro de usuarios con autorización de tratamiento de datos (Ley 1581) para medir KR1 y la retención.
+5. RF09: reemplazar los compradores de demostración por compradores reales registrados (con su autorización de datos) y habilitar WhatsApp o llamada solo con números que ellos publiquen.
 
 ## Referencias
 

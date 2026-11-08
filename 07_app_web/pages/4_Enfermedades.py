@@ -14,6 +14,7 @@ nunca con dosis escritas en el código.
 import hashlib
 import pandas as pd
 import streamlit as st
+from cofitech.marca import ICONO  # emblema del logo en la pestaña del navegador
 from pathlib import Path
 from PIL import Image
 import io
@@ -27,7 +28,7 @@ from cofitech.telemetria import barra_valoracion, cronometro, registrar_evento_u
 
 CLAVE_PREGUNTA_PENDIENTE = "rag_pregunta_pendiente"   # la lee pages/5_Chatbot.py
 
-st.set_page_config(page_title="Enfermedades", page_icon="📷", layout="wide")
+st.set_page_config(page_title="Enfermedades", page_icon=ICONO, layout="wide")
 st.title("📷 Detector de Enfermedades del Café")
 
 PROJECT = Path(__file__).resolve().parents[2]
