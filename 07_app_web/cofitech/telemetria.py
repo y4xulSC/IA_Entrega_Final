@@ -52,6 +52,8 @@ _CLAVE_VOTOS = "cofitech_votos"
 _CLAVE_UNICOS = "cofitech_eventos_unicos"
 
 HERRAMIENTAS: tuple[str, ...] = ("Visión", "Predicción Rendimiento", "Predicción Precios", "RAG", "Mercado")
+FUNCION_CHAT_CAFICULTORES = "chat_comercializacion_caficultores"
+ACCION_INTERES = "interes_funcionalidad"
 ETIQUETA_ROL: dict[Rol, str] = {Rol.CAFICULTOR: "Caficultor", Rol.AGRONOMO: "Agrónomo/Cooperativa"}
 GRACIAS = "Gracias por ayudarnos a calibrar los modelos para el campo colombiano"
 
@@ -169,12 +171,14 @@ def calcular_kpis(df: pd.DataFrame) -> dict[str, Any]:
 
     if df.empty:
         return {"sesiones": 0, "eventos": 0, "confianza_aceptada": None, "validaciones": 0, "resolucion_rag": None,
-                "valoraciones_rag": 0, "sesiones_3_herramientas": 0, "sesiones_con_valoracion": None}
+                "valoraciones_rag": 0, "sesiones_3_herramientas": 0, "sesiones_con_valoracion": None,
+                "interes_chat": None, "votos_chat": 0}
 
     validaciones = df.loc[df["accion"] == "validacion_diagnostico", "md_confianza_aceptada"] \
         if "md_confianza_aceptada" in df else pd.Series(dtype=bool)
     utiles = df.loc[df["accion"] == "feedback_respuesta", "md_util"] if "md_util" in df else pd.Series(dtype=bool)
-
+    es_chat = (df["accion"] == ACCION_INTERES) & (df.get("md_funcionalidad") == FUNCION_CHAT_CAFICULTORES)
+    interes_chat = df.loc[es_chat, "md_le_interesa"] if "md_le_interesa" in df else pd.Series(dtype=bool)
     herramientas = df.groupby("id_sesion")["herramienta"].agg(set)
     tres = herramientas.map(lambda h: "Visión" in h and "RAG" in h
                             and bool(h & {"Predicción Rendimiento", "Predicción Precios"}))
@@ -189,6 +193,8 @@ def calcular_kpis(df: pd.DataFrame) -> dict[str, Any]:
         "valoraciones_rag": int(utiles.notna().sum()),
         "sesiones_3_herramientas": int(tres.sum()),
         "sesiones_con_valoracion": votaron / df["id_sesion"].nunique(),
+        "interes_chat": _tasa(interes_chat),
+        "votos_chat": int(interes_chat.notna().sum()),
     }
 
 

@@ -32,6 +32,10 @@ c3.metric("KR3 · sesiones con las 3 herramientas", f"{kpis['sesiones_3_herramie
 c4.metric("Sesiones que valoraron", _pct(kpis["sesiones_con_valoracion"]),
           help="Proxy de KR2 (meta 70 %): sesiones con al menos un 👍/👎. KR2 pide encuestas de usabilidad; "
                "los votos son una señal parcial.")
+c5, _, _, _ = st.columns(4)
+c5.metric("Interés: vender junto con otros caficultores", _pct(kpis["interes_chat"]),
+          help=f"Prueba de interés en «Vender mi café»: caficultores que votaron 👍 «Me gustaría» "
+               f"({kpis['votos_chat']} votos). Si es alto, se construye el chat entre caficultores.")
 st.caption(f"{kpis['eventos']} eventos de {kpis['sesiones']} sesiones · Supabase: {tel.db_client.estado()} "
            f"(si no responde se lee `{tel.RUTA_EVENTOS.name}`). "
            "Una sesión es un navegador, no una persona: sin inicio de sesión no se pueden contar usuarios.")

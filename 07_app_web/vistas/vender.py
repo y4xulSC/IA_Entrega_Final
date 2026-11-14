@@ -21,7 +21,7 @@ import streamlit as st
 from cofitech import marca, mercado
 from cofitech.contexto_finca import VARIEDADES, mes_anio, obtener_contexto
 from cofitech.mercado import cop
-from cofitech.telemetria import registrar_evento_uso
+from cofitech.telemetria import ACCION_INTERES, FUNCION_CHAT_CAFICULTORES, barra_valoracion, registrar_evento_uso
 
 st.set_page_config(page_title="Vender mi café", page_icon=marca.ICONO, layout="centered")
 
@@ -297,3 +297,23 @@ def tarjeta_oferta(lote: mercado.Lote, oferta: mercado.Oferta) -> None:
 
 {"Compradores": vista_compradores, "Publicar mi lote": vista_publicar,
  "Mis lotes y mensajes": vista_mis_lotes}[seccion]()
+
+
+
+#Prueba de interés: chat entre caficultores para vender 
+st.divider()
+with st.container(border=True):
+    st.markdown("**Próximamente: vende junto con otros caficultores** " + marca.chip("Idea en evaluación"),
+                unsafe_allow_html=True)
+    st.caption("Un chat para contactar caficultores de tu zona, juntar lotes y llegar a compradores. "
+               "Tu voto decide si lo construimos.")
+    barra_valoracion(
+        clave=FUNCION_CHAT_CAFICULTORES,
+        pregunta="¿Te gustaría contactar a otros caficultores?",
+        herramienta="Mercado",
+        accion=ACCION_INTERES,
+        campo="le_interesa",
+        metadata={"funcionalidad": FUNCION_CHAT_CAFICULTORES},
+        etiqueta_si="👍 Me gustaría",
+        etiqueta_no="👎 No me interesa",
+    )
