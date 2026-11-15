@@ -275,3 +275,15 @@ def test_icono_se_puede_usar_desde_varios_hilos():
     for h in hilos:
         h.join()
     assert not errores
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="el ajuste de hilos solo aplica en Linux")
+def test_hilos_limitados_y_faulthandler_activo():
+    """En la nube TensorFlow no debe dimensionar sus hilos con los núcleos del servidor físico."""
+    import faulthandler
+    import os
+    import cofitech
+    assert faulthandler.is_enabled()
+    assert 1 <= cofitech._nucleos_disponibles() <= (os.cpu_count() or 1)
+    assert int(os.environ["TF_NUM_INTRAOP_THREADS"]) <= 4
+    assert os.environ["TF_NUM_INTEROP_THREADS"] == "1"
