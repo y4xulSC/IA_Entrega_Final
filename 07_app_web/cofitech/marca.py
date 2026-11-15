@@ -34,9 +34,19 @@ COLORES = {
 
 
 def _icono() -> Image.Image | str:
+    """Emblema ya decodificado en memoria.
+
+    ``Image.open`` es perezoso: deja el archivo abierto y lo lee al primer uso.
+    ``ICONO`` lo comparten todas las sesiones, y en Streamlit Community Cloud
+    varias ejecutan ``st.set_page_config`` a la vez: leer el mismo archivo desde
+    varios hilos rompe la lectura (``OSError: image file is truncated``) y la app
+    no abre. Con ``load()`` + ``copy()`` la imagen queda en memoria, sin archivo.
+    """
     try:
-        return Image.open(RUTA_EMBLEMA)
-    except OSError:          # sin el archivo la app sigue con un emoji
+        with Image.open(RUTA_EMBLEMA) as imagen:
+            imagen.load()
+            return imagen.copy()
+    except OSError:          # sin el archivo (o dañado) la app sigue con un emoji
         return "☕"
 
 
