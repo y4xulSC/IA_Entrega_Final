@@ -162,6 +162,9 @@ def calcular_kpis(df: pd.DataFrame) -> dict[str, Any]:
     * KR3: sesiones que usaron Visión, Predicción (rendimiento o precios) y RAG.
     * Proxy de KR2: % de sesiones que dejaron al menos una valoración. KR2 pide
       encuestas de usabilidad; los votos son una señal parcial.
+    * Interés en la venta directa (Beta): % de votos 👍 a «¿Te gustaría vender tu
+      café desde CofiTech?» (``accion = "interes_venta_directa"``), y sesiones que
+      usaron el simulador de venta. Decide si se activa la herramienta.
     """
     def _tasa(serie: pd.Series) -> Optional[float]:
         serie = serie.dropna().astype(bool)
@@ -169,11 +172,17 @@ def calcular_kpis(df: pd.DataFrame) -> dict[str, Any]:
 
     if df.empty:
         return {"sesiones": 0, "eventos": 0, "confianza_aceptada": None, "validaciones": 0, "resolucion_rag": None,
-                "valoraciones_rag": 0, "sesiones_3_herramientas": 0, "sesiones_con_valoracion": None}
+                "valoraciones_rag": 0, "sesiones_3_herramientas": 0, "sesiones_con_valoracion": None,
+                "interes_mercado": None, "votos_interes_mercado": 0, "interes_con_simulador": None,
+                "sesiones_simulador": 0}
 
     validaciones = df.loc[df["accion"] == "validacion_diagnostico", "md_confianza_aceptada"] \
         if "md_confianza_aceptada" in df else pd.Series(dtype=bool)
     utiles = df.loc[df["accion"] == "feedback_respuesta", "md_util"] if "md_util" in df else pd.Series(dtype=bool)
+    es_interes = df["accion"] == "interes_venta_directa"
+    interes = df.loc[es_interes, "md_le_gustaria"] if "md_le_gustaria" in df else pd.Series(dtype=bool)
+    con_simulador = (df.loc[es_interes & df["md_uso_simulador"].eq(True), "md_le_gustaria"]
+                     if {"md_le_gustaria", "md_uso_simulador"} <= set(df) else pd.Series(dtype=bool))
 
     herramientas = df.groupby("id_sesion")["herramienta"].agg(set)
     tres = herramientas.map(lambda h: "Visión" in h and "RAG" in h
@@ -189,12 +198,17 @@ def calcular_kpis(df: pd.DataFrame) -> dict[str, Any]:
         "valoraciones_rag": int(utiles.notna().sum()),
         "sesiones_3_herramientas": int(tres.sum()),
         "sesiones_con_valoracion": votaron / df["id_sesion"].nunique(),
+        "interes_mercado": _tasa(interes),
+        "votos_interes_mercado": int(interes.notna().sum()),
+        "interes_con_simulador": _tasa(con_simulador),
+        "sesiones_simulador": int(df.loc[df["accion"] == "simulacion_venta", "id_sesion"].nunique()),
     }
 
 
 COLUMNAS_KPI_ROL: list[str] = [
     "rol", "sesiones", "eventos", "valoraciones_rag", "satisfaccion_rag", "validaciones_vision",
     "confianza_aceptada", "confianza_media_modelo", "sesiones_3_herramientas", "ultimo_evento",
+    "votos_interes_mercado", "interes_mercado", "sesiones_simulador",
 ]
 
 
@@ -217,7 +231,9 @@ def kpis_por_rol(df: pd.DataFrame) -> pd.DataFrame:
                 "validaciones_vision": k["validaciones"], "confianza_aceptada": k["confianza_aceptada"],
                 "confianza_media_modelo": float(confianza.mean()) if len(confianza) else None,
                 "sesiones_3_herramientas": k["sesiones_3_herramientas"],
-                "ultimo_evento": parte["timestamp"].max()}
+                "ultimo_evento": parte["timestamp"].max(),
+                "votos_interes_mercado": k["votos_interes_mercado"], "interes_mercado": k["interes_mercado"],
+                "sesiones_simulador": k["sesiones_simulador"]}
 
     filas = [_fila(str(rol), parte) for rol, parte in df.groupby(df["usuario_rol"].fillna("Sin rol"))]
     filas.append(_fila("Total", df))
@@ -235,6 +251,7 @@ def barra_valoracion(
     etiqueta_si: str = "👍 Sí",
     etiqueta_no: str = "👎 No",
     al_votar: Optional[Callable[[bool], Any]] = None,
+    agradecimiento: str = GRACIAS,
 ) -> Optional[bool]:
     """Pregunta de sí/no que registra el voto una sola vez.
 
@@ -249,6 +266,7 @@ def barra_valoracion(
         campo: Nombre del dato en ``metadata`` (``"confianza_aceptada"``, ``"util"``).
         metadata: Datos adicionales del evento.
         al_votar: Función opcional que recibe el voto (p. ej. guardarlo en Supabase).
+        agradecimiento: Texto que aparece después de votar.
 
     Returns:
         El voto (``True``/``False``) o ``None`` si aún no se ha votado.
@@ -270,7 +288,7 @@ def barra_valoracion(
         col_si.button(etiqueta_si, key=f"voto_si_{clave}", on_click=_votar, args=(True,), disabled=votado)
         col_no.button(etiqueta_no, key=f"voto_no_{clave}", on_click=_votar, args=(False,), disabled=votado)
         if votado:
-            st.caption(f"{GRACIAS} · Tu respuesta: {'sí' if votos[clave] else 'no'}")
+            st.caption(f"{agradecimiento} · Tu respuesta: {'sí' if votos[clave] else 'no'}")
     return votos.get(clave)
 
 

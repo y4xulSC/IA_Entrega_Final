@@ -123,6 +123,9 @@ def _eventos_kpi():
         ("s1", "Caficultor", "Predicción Rendimiento", "calculo_rendimiento", {}),
         ("s1", "Caficultor", "RAG", "feedback_respuesta", {"util": True}),
         ("s2", "Agrónomo/Cooperativa", "RAG", "feedback_respuesta", {"util": False}),
+        ("s1", "Caficultor", "Mercado", "simulacion_venta", {"ofertas": 2}),
+        ("s1", "Caficultor", "Mercado", "interes_venta_directa", {"le_gustaria": True, "uso_simulador": True}),
+        ("s3", "Caficultor", "Mercado", "interes_venta_directa", {"le_gustaria": False, "uso_simulador": False}),
     ]
     eventos = [{"timestamp": "2026-10-15T08:00:00-05:00", "id_sesion": s, "usuario_rol": r, "herramienta": h,
                 "accion": a, "metadata": md} for s, r, h, a, md in filas]
@@ -139,6 +142,11 @@ def test_kpis_por_rol_local():
     assert tabla.loc["Caficultor", "confianza_aceptada"] == pytest.approx(1.0)
     assert tabla.loc["Caficultor", "sesiones_3_herramientas"] == 1
     assert tabla.loc["Agrónomo/Cooperativa", "valoraciones_rag"] == 1
+    assert tabla.loc["Caficultor", "votos_interes_mercado"] == 2
+    assert tabla.loc["Caficultor", "interes_mercado"] == pytest.approx(0.5)
+    assert tabla.loc["Total", "sesiones_simulador"] == 1
+    assert pd.isna(tabla.loc["Agrónomo/Cooperativa", "interes_mercado"])
+    assert tel.calcular_kpis(df)["interes_con_simulador"] == pytest.approx(1.0)
 
 
 @requiere_bd
@@ -151,9 +159,25 @@ def test_vista_de_kpis_coincide_con_el_calculo_local(bd):
     nube = db_client.kpis_consolidados().set_index("rol")
     local = tel.kpis_por_rol(df).set_index("rol")
     for rol in local.index:
-        for col in ("sesiones", "eventos", "valoraciones_rag", "validaciones_vision", "sesiones_3_herramientas"):
+        for col in ("sesiones", "eventos", "valoraciones_rag", "validaciones_vision", "sesiones_3_herramientas",
+                    "votos_interes_mercado", "sesiones_simulador"):
             assert nube.loc[rol, col] == local.loc[rol, col], (rol, col)
-        for col in ("satisfaccion_rag", "confianza_aceptada", "confianza_media_modelo"):
+        for col in ("satisfaccion_rag", "confianza_aceptada", "confianza_media_modelo", "interes_mercado"):
             assert nube.loc[rol, col] == pytest.approx(local.loc[rol, col], nan_ok=True), (rol, col)
     with db_client._conexion() as conn, conn.cursor() as cur:
-        cur.execute("DELETE FROM cafe.registro_eventos_uso WHERE id_sesion IN ('s1', 's2')")
+        cur.execute("DELETE FROM cafe.registro_eventos_uso WHERE id_sesion IN ('s1', 's2', 's3')")
+
+
+@requiere_bd
+def test_vista_de_interes_en_la_venta_directa(bd):
+    _, eventos, _ = _eventos_kpi()
+    with db_client._conexion() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM cafe.registro_eventos_uso")      # base de PRUEBAS: se parte de cero
+    for evento in eventos:
+        db_client.insertar_evento(evento)
+    kpi = db_client.interes_venta_directa()
+    assert kpi == {"votos": 2, "a_favor": 1, "interes": pytest.approx(0.5),
+                   "votos_con_simulador": 1, "interes_con_simulador": pytest.approx(1.0)}
+    assert "KPI de interés en la venta directa listo" in db_client.probar_conexion()
+    with db_client._conexion() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM cafe.registro_eventos_uso WHERE id_sesion IN ('s1', 's2', 's3')")

@@ -26,6 +26,7 @@ Se lee desde `.env` en la raíz del proyecto:
 | `db_client.py` | Cliente de la app Streamlit para Supabase |
 | `04_vistas_kpis.sql` | Solo las vistas de KPIs (`telemetria_kpis`, `vw_kpis_consolidados`), para bases que ya tenían el esquema v1.3 |
 | `05_marketplace.sql` | Solo la venta directa (RF09): `mk_comprador`, `mk_lote`, `mk_oferta`, `mk_mensaje`, vista `vw_lotes_zona` y la herramienta `Mercado` en la telemetría, para bases que ya tenían el esquema v1.4 |
+| `06_kpi_interes_mercado.sql` | KPI «Interés en la venta directa» (Beta): actualiza `telemetria_kpis` y `vw_kpis_consolidados` (columnas `votos_interes_mercado`, `interes_mercado`, `sesiones_simulador`) y crea `vw_interes_venta_directa`, para bases que ya tenían el esquema v1.5. Solo vistas: no toca datos |
 
 ## Flujo recomendado
 
@@ -83,7 +84,7 @@ SELECT * FROM cafe.vw_master_municipal_mensual LIMIT 5;
 
 ## Supabase (nube, sin Docker)
 
-La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`), el 👍/👎 del caficultor y la telemetría con las calificaciones del chat (`cafe.registro_eventos_uso`, vista `cafe.vw_feedback_rag`). El mapa de **Alertas fitosanitarias** (rol Agrónomo / Cooperativa) lee de ahí y se refresca cada 30 s. Desde la v1.5 también guarda la **venta directa** (pantalla «Vender mi café»): los lotes que publican los caficultores (`cafe.mk_lote`, sin nombre ni teléfono: solo un id de sesión aleatorio), las ofertas (`cafe.mk_oferta`, con el total calculado en la base) y el chat (`cafe.mk_mensaje`). Los compradores sembrados en `cafe.mk_comprador` son **ficticios** (`es_demo = true`) y la app responde por ellos; un comprador real se registra con `es_demo = false`. Si la base no responde, la app sigue con los archivos locales de `05_resultados/logs/` y lo avisa en pantalla.
+La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`), el 👍/👎 del caficultor y la telemetría con las calificaciones del chat (`cafe.registro_eventos_uso`, vista `cafe.vw_feedback_rag`). El mapa de **Alertas fitosanitarias** (rol Agrónomo / Cooperativa) lee de ahí y se refresca cada 30 s. Desde la v1.5 también guarda la **venta directa** (pantalla «Vender mi café»): los lotes que publican los caficultores (`cafe.mk_lote`, sin nombre ni teléfono: solo un id de sesión aleatorio), las ofertas (`cafe.mk_oferta`, con el total calculado en la base) y el chat (`cafe.mk_mensaje`). Los compradores sembrados en `cafe.mk_comprador` son **ficticios** (`es_demo = true`) y la app responde por ellos; un comprador real se registra con `es_demo = false`. Si la base no responde, la app sigue con los archivos locales de `05_resultados/logs/` y lo avisa en pantalla. En la **Beta 0.9.0** la venta real está inactiva: «Vender mi café» ofrece un simulador que no escribe en las tablas `mk_*`, y el voto 👍/👎 a «¿Te gustaría vender tu café desde CofiTech?» llega a `registro_eventos_uso` (`accion = 'interes_venta_directa'`, `metadata.le_gustaria`). Desde la v1.6 ese voto es el KPI **Interés en la venta directa**: columna `interes_mercado` de `cafe.vw_kpis_consolidados` y vista `cafe.vw_interes_venta_directa` (un voto por fila, con municipio y si la sesión probó el simulador).
 
 | Archivo | Función |
 |---------|---------|
@@ -91,9 +92,11 @@ La app guarda en Supabase cada foto diagnosticada (`cafe.registro_diagnosticos`)
 | `db_client.py` | Cliente de la app (psycopg2 con pool, reintento en pausa de 60 s, `connect_timeout` de 5 s) |
 
 ### Paso 1 — Crear las tablas
-Supabase → **SQL Editor** → **New query** → pegar todo `03_supabase_schema.sql` → **Run**. La última fila dice `OK (v1.5) · esquema cafe con 18 tablas…; 5 compradores`.
+Supabase → **SQL Editor** → **New query** → pegar todo `03_supabase_schema.sql` → **Run**. La última fila dice `OK (v1.6) · esquema cafe con 18 tablas…; 5 compradores`.
 
-**¿Ya tenías la v1.4?** Basta con ejecutar `05_marketplace.sql` (crea las 4 tablas de venta directa y amplía el CHECK de `registro_eventos_uso.herramienta` con `'Mercado'`). También puedes volver a ejecutar `03_supabase_schema.sql` completo: no borra datos. Ambos se probaron dos veces seguidas en PostgreSQL 16 y 18. Si faltan las tablas, `python 03_scripts/bd/db_client.py` lo dice y la app guarda la venta en `05_resultados/marketplace/`.
+**¿Ya tenías la v1.5?** Ejecuta `06_kpi_interes_mercado.sql` (solo reemplaza vistas). **¿La v1.4?** Primero `05_marketplace.sql` y después `06_kpi_interes_mercado.sql`. No vuelvas a ejecutar `04_vistas_kpis.sql` sobre una base v1.6: su vista tiene menos columnas y falla.
+
+**Detalle de la v1.4 → v1.5:** basta con ejecutar `05_marketplace.sql` (crea las 4 tablas de venta directa y amplía el CHECK de `registro_eventos_uso.herramienta` con `'Mercado'`). También puedes volver a ejecutar `03_supabase_schema.sql` completo: no borra datos. Ambos se probaron dos veces seguidas en PostgreSQL 16 y 18. Si faltan las tablas, `python 03_scripts/bd/db_client.py` lo dice y la app guarda la venta en `05_resultados/marketplace/`.
 
 Seguridad: el esquema `cafe` no se publica en la Data API, tiene RLS activado sin políticas y se le retiran los permisos a `anon` y `authenticated`. La llave pública (`anon key`) de Supabase no puede leerlo; solo la app con la contraseña de la base.
 
@@ -167,3 +170,4 @@ pg_restore -U postgres -h localhost -d cafe_ia -c cafe_ia_backup.dump
 | 1.0 | 2026-05 | Esquema inicial |
 | 1.1 | 2026-05 | Alineado con `*_validado.csv` (USD/kg, viento, radiación, surge_flag); carga lee de `procesados/`; `.env` + logging real |
 | 1.5 (Supabase) | 2026-10 | Venta directa: `mk_comprador`, `mk_lote`, `mk_oferta`, `mk_mensaje`, `vw_lotes_zona`; herramienta `Mercado` en la telemetría; migración `05_marketplace.sql` |
+| 1.6 (Supabase) | 2026-11 | KPI «Interés en la venta directa» y uso del simulador en `vw_kpis_consolidados`; vista `vw_interes_venta_directa`; migración `06_kpi_interes_mercado.sql` |

@@ -61,6 +61,7 @@ def _agronomo(monkeypatch, hash_guardado: str | None) -> AppTest:
     at = AppTest.from_file(str(APP / "app.py"), default_timeout=120).run()
     at.radio[0].set_value("Soy agrónomo o trabajo en una cooperativa").run()
     at.multiselect[0].set_value(["Quindío"])
+    at.checkbox[0].check()                     # autorización de tratamiento de datos (Ley 1581)
     at.button[0].click()
     return at.run()
 

@@ -37,6 +37,30 @@ st.caption(f"{kpis['eventos']} eventos de {kpis['sesiones']} sesiones · Supabas
            "Una sesión es un navegador, no una persona: sin inicio de sesión no se pueden contar usuarios.")
 
 
+def _interes() -> tuple[dict, str]:
+    """KPI «Interés en la venta directa»: de Supabase (vw_interes_venta_directa) o del archivo local."""
+    if tel.db_client.configurado():
+        try:
+            return tel.db_client.interes_venta_directa(), "Supabase (`cafe.vw_interes_venta_directa`)"
+        except Exception:          # base caída o esquema v1.5 sin la vista (06_kpi_interes_mercado.sql)
+            pass
+    return {"votos": kpis["votos_interes_mercado"], "interes": kpis["interes_mercado"],
+            "interes_con_simulador": kpis["interes_con_simulador"]}, "archivo local"
+
+
+st.subheader("Venta directa (Beta) · ¿se activa?")
+interes, fuente_interes = _interes()
+v1, v2, v3 = st.columns(3)
+v1.metric("Interés en la venta directa", _pct(interes["interes"]),
+          help=f"Votos 👍 / votos a «¿Te gustaría vender tu café desde CofiTech?» ({interes['votos']} votos). "
+               "La herramienta está inactiva en la Beta; este KPI decide si se activa.")
+v2.metric("Interés de quienes usaron el simulador", _pct(interes.get("interes_con_simulador")),
+          help="Mismo KPI, solo en sesiones que probaron el simulador de venta antes de votar.")
+v3.metric("Sesiones que usaron el simulador", f"{kpis['sesiones_simulador']}",
+          help="Sesiones con al menos una simulación de venta (evento simulacion_venta).")
+st.caption(f"Fuente del interés: {fuente_interes}.")
+
+
 
 # ───────────────────── KPIs consolidados en vivo (por rol) ──────────────────
 @st.fragment(run_every="30s")
@@ -70,6 +94,11 @@ def kpis_en_vivo() -> None:
                 help="Promedio de la probabilidad que dio la CNN a la clase elegida."),
             "sesiones_3_herramientas": st.column_config.NumberColumn("KR3 (sesiones)", help="Meta: 10."),
             "ultimo_evento": st.column_config.DatetimeColumn("Último evento", format="D MMM YYYY, HH:mm"),
+            "votos_interes_mercado": "Votos venta directa",
+            "interes_mercado": st.column_config.ProgressColumn(
+                "Interés venta directa", format="percent", min_value=0, max_value=1,
+                help="Votos 👍 a «¿Te gustaría vender tu café desde CofiTech?» / votos."),
+            "sesiones_simulador": st.column_config.NumberColumn("Sesiones simulador"),
         },
     )
     st.caption(f"Fuente: {fuente} · se actualiza cada 30 s.")
@@ -87,7 +116,7 @@ st.dataframe(uso, hide_index=True, use_container_width=True)
 
 st.subheader("Últimos eventos")
 columnas = [c for c in ("timestamp", "usuario_rol", "herramienta", "accion", "md_municipio", "md_modelo",
-                        "md_tiempo_respuesta_s", "md_confianza_aceptada", "md_util") if c in df]
+                        "md_tiempo_respuesta_s", "md_confianza_aceptada", "md_util", "md_le_gustaria") if c in df]
 st.dataframe(df.sort_values("timestamp", ascending=False)[columnas].head(50), hide_index=True,
              use_container_width=True)
 

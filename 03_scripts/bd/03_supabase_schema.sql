@@ -24,6 +24,9 @@
 --     KPIs telemetria_kpis y vw_kpis_consolidados.
 --   · v1.5: venta directa (mk_comprador, mk_lote, mk_oferta, mk_mensaje y la
 --     vista vw_lotes_zona) y la herramienta 'Mercado' en la telemetría.
+--   · v1.6: KPI «Interés en la venta directa» (voto 👍/👎 de la Beta) y uso del
+--     simulador de venta en vw_kpis_consolidados, y la vista
+--     vw_interes_venta_directa. Para bases v1.5: 06_kpi_interes_mercado.sql.
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE SCHEMA IF NOT EXISTS cafe;
@@ -495,6 +498,9 @@ SELECT e.id,
            WHEN e.accion = 'validacion_diagnostico'
                 AND jsonb_typeof(e.metadata->'confianza_aceptada') = 'boolean'
                THEN (e.metadata->>'confianza_aceptada')::boolean
+           WHEN e.accion = 'interes_venta_directa'
+                AND jsonb_typeof(e.metadata->'le_gustaria') = 'boolean'
+               THEN (e.metadata->>'le_gustaria')::boolean
        END                                             AS calificacion_utilidad,
        CASE WHEN jsonb_typeof(e.metadata->'confianza') = 'number'
             THEN (e.metadata->>'confianza')::numeric(5,4)
@@ -506,7 +512,8 @@ FROM cafe.registro_eventos_uso e;
 
 COMMENT ON VIEW cafe.telemetria_kpis IS
     'Un evento por fila con las columnas de KPI: calificacion_utilidad = 👍/👎 '
-    '(RAG: respuesta útil; Visión: diagnóstico aceptado); confianza_modelo = certeza de la CNN.';
+    '(RAG: respuesta útil; Visión: diagnóstico aceptado; Mercado: le gustaría la venta directa); '
+    'confianza_modelo = certeza de la CNN.';
 
 -- KPIs consolidados por rol y total (fila con rol = 'Total').
 CREATE OR REPLACE VIEW cafe.vw_kpis_consolidados
@@ -532,12 +539,37 @@ SELECT COALESCE(k.rol, 'Total')                                                 
              FILTER (WHERE k.accion = 'diagnostico_ejecutado'), 4)                    AS confianza_media_modelo,
        COUNT(DISTINCT k.id_sesion)
              FILTER (WHERE k.id_sesion IN (SELECT id_sesion FROM sesiones_kr3))       AS sesiones_3_herramientas,
-       MAX(k.fecha)                                                                   AS ultimo_evento
+       MAX(k.fecha)                                                                   AS ultimo_evento,
+       -- v1.6 (columnas al final para que CREATE OR REPLACE VIEW funcione sobre la v1.5)
+       COUNT(k.calificacion_utilidad) FILTER (WHERE k.accion = 'interes_venta_directa') AS votos_interes_mercado,
+       ROUND(AVG(k.calificacion_utilidad::int)
+             FILTER (WHERE k.accion = 'interes_venta_directa'), 4)                    AS interes_mercado,
+       COUNT(DISTINCT k.id_sesion) FILTER (WHERE k.accion = 'simulacion_venta')       AS sesiones_simulador
 FROM cafe.telemetria_kpis k
 GROUP BY GROUPING SETS ((k.rol), ());
 
 COMMENT ON VIEW cafe.vw_kpis_consolidados IS
-    'KPIs de la entrega de Data Thinking: satisfacción RAG, confianza aceptada (Visión) y KR3, por rol y en total.';
+    'KPIs de la entrega de Data Thinking: satisfacción RAG, confianza aceptada (Visión), KR3 e interés en la '
+    'venta directa (Beta), por rol y en total.';
+
+-- KPI «Interés en la venta directa»: un voto 👍/👎 por sesión desde «Vender mi café»
+-- (inactiva en la Beta). uso_simulador = la sesión probó el simulador antes de votar.
+CREATE OR REPLACE VIEW cafe.vw_interes_venta_directa
+WITH (security_invoker = true) AS
+SELECT e.id,
+       e.fecha,
+       e.id_sesion,
+       e.usuario_rol                                   AS rol,
+       e.metadata->>'municipio'                        AS municipio,
+       e.metadata->>'codigo_dane'                      AS codigo_dane,
+       (e.metadata->>'le_gustaria')::boolean           AS le_gustaria,
+       COALESCE((e.metadata->>'uso_simulador')::boolean, false) AS uso_simulador
+FROM cafe.registro_eventos_uso e
+WHERE e.accion = 'interes_venta_directa'
+  AND jsonb_typeof(e.metadata->'le_gustaria') = 'boolean';
+
+COMMENT ON VIEW cafe.vw_interes_venta_directa IS
+    'Votos de la pregunta «¿Te gustaría vender tu café desde CofiTech?» (Beta 0.9.0). Sin datos personales.';
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- VENTA DIRECTA (pasos 5–7 del MockUp ganador: «Vender»; RF09)
@@ -711,7 +743,7 @@ $$;
 -- ────────────────────────────────────────────────────────────────────────────
 -- VERIFICACIÓN
 -- ────────────────────────────────────────────────────────────────────────────
-SELECT 'OK (v1.5) · esquema cafe con ' ||
+SELECT 'OK (v1.6) · esquema cafe con ' ||
        (SELECT count(*) FROM information_schema.tables
          WHERE table_schema = 'cafe' AND table_type = 'BASE TABLE') ||
        ' tablas; registro_diagnosticos con ' ||

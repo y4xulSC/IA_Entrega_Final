@@ -1,34 +1,50 @@
-streamlit>=1.49.0
-pandas>=2.0.0
-numpy<2.0.0
-plotly>=5.18.0
-matplotlib>=3.7.0
-seaborn>=0.13.0
+# CofiTech · dependencias de la app web (local y Streamlit Community Cloud).
+#
+# Versiones fijadas = las probadas con Python 3.11 en Linux (85 pruebas en verde,
+# todos los modelos cargan y el proceso completo usa ~1,6 GB de memoria, por debajo
+# de los 2,7 GB del plan gratis de Streamlit Community Cloud).
+#
+# Sin pérdida de calidad: son los mismos modelos .keras / .pkl y el mismo modelo de
+# embeddings; solo se quitaron librerías que la app no importa (xgboost, lightgbm,
+# shap, seaborn, unstructured: siguen en 02_notebooks/requirements_notebooks.txt).
+
+# ── Interfaz y datos
+streamlit==1.67.0
+pandas==2.3.3            # pandas 3 cambia el manejo de copias y de texto: no probado
+numpy==1.26.4            # los modelos .pkl/.keras se entrenaron con NumPy 1.x
+pyarrow==19.0.1          # pyarrow >= 23 exige NumPy 2 y rompe st.dataframe
+plotly==7.1.0
+matplotlib==3.11.2
+folium==0.20.0
+streamlit-folium==0.27.4
+Pillow==13.0.0
+python-dotenv==1.2.4
+
+# ── Base de datos (Supabase / PostgreSQL)
+psycopg2-binary==2.9.13
+
+# ── Modelos clásicos (rendimiento): el .pkl solo carga con estas versiones
 scikit-learn==1.6.1
-xgboost>=2.0.0
-lightgbm>=4.0.0
-joblib>=1.3.0
-Pillow>=10.0.0
-folium>=0.15.0
-streamlit-folium>=0.15.0
-psycopg2-binary>=2.9.0
-shap>=0.44.0
 catboost==1.2.10
+joblib==1.6.0
 
-# Deep learning (opcional, comentar si no es necesario en deploy)
-tensorflow>=2.16.1
-tf-keras>=2.16.0
+# ── Redes neuronales (CNN de enfermedades, LSTM/BiGRU/Transformer, Autoencoder/VAE)
+# En Linux (Streamlit Cloud) basta la versión CPU, más liviana; en Windows/macOS
+# se usa el paquete normal.
+tensorflow-cpu==2.21.0; sys_platform == "linux"
+tensorflow>=2.16.1; sys_platform != "linux"
+keras==3.15.1; sys_platform == "linux"
 
-# Agente RAG
-python-dotenv>=1.0.0
-langchain>=0.2.0
-langchain-core>=0.2.0
-langchain-community>=0.2.0
-langchain-text-splitters>=0.2.0
-langchain-groq>=0.1.0
-langchain-chroma>=0.1.1
-langchain-huggingface>=0.0.3
-sentence-transformers>=2.7.0
-chromadb>=0.5.0
-pypdf>=4.2.0
-unstructured>=0.13.0
+# ── Agente RAG (embeddings locales all-MiniLM-L6-v2 + ChromaDB + Groq)
+langchain==1.5.0
+langchain-core==1.8.0
+langchain-community==0.4.2
+langchain-text-splitters==1.1.3
+langchain-groq==1.1.3
+langchain-chroma==1.1.0
+langchain-huggingface==1.2.3
+sentence-transformers==6.3.0
+transformers==5.23.0
+torch==2.15.0; sys_platform == "linux"
+chromadb==1.5.9
+pypdf==7.1.0

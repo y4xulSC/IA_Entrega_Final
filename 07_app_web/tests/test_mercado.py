@@ -194,18 +194,21 @@ def test_restricciones_de_la_base(bd):
 
 # ───────────────────────────────── Pantallas ────────────────────────────────
 def _caficultor(tmp_path, monkeypatch) -> AppTest:
+    monkeypatch.setenv("COFITECH_MERCADO_ACTIVO", "1")         # en la Beta viene apagado
     monkeypatch.setattr(db_client, "_dsn", lambda: None)
     monkeypatch.setattr(mercado, "DIR_LOCAL", tmp_path)        # AppTest corre en este mismo proceso
     monkeypatch.setattr(telemetria, "RUTA_EVENTOS", tmp_path / "eventos.jsonl")
     at = AppTest.from_file(str(APP / "app.py"), default_timeout=120).run()
     at.radio[0].set_value("Soy caficultor").run()
     at.selectbox[0].set_value(next(o for o in at.selectbox[0].options if o.startswith("Caicedonia"))).run()
+    at.checkbox[0].check()                     # autorización de tratamiento de datos (Ley 1581)
     at.button[0].click()
     return at.run()
 
 
 def _pantalla(archivo: str, ctx, tmp_path, monkeypatch) -> AppTest:
     """Una pantalla sola con el contexto ya cargado (AppTest no navega bien entre páginas con widgets)."""
+    monkeypatch.setenv("COFITECH_MERCADO_ACTIVO", "1")         # en la Beta viene apagado
     monkeypatch.setattr(db_client, "_dsn", lambda: None)
     monkeypatch.setattr(mercado, "DIR_LOCAL", tmp_path)
     monkeypatch.setattr(telemetria, "RUTA_EVENTOS", tmp_path / "eventos.jsonl")

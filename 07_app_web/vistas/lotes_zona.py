@@ -10,13 +10,30 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from cofitech import marca, mercado
+from cofitech import config, marca, mercado
 from cofitech.contexto_finca import obtener_contexto
 from cofitech.datos import normalizar
 from cofitech.mercado import cop
 from cofitech.telemetria import registrar_una_vez
 
 st.set_page_config(page_title="Oferta de café en mi zona", page_icon=marca.ICONO, layout="wide")
+
+if not config.mercado_activo():
+    st.title("Oferta de café en mi zona")
+    st.markdown(marca.tarjeta_inactiva(
+        "La consola de venta directa está desactivada en esta versión",
+        "En CofiTech Beta la venta directa entre caficultores y compradores no está habilitada, así que no hay "
+        "lotes que mostrar. La consola de la cooperativa sigue completa en sus herramientas de IA y datos."),
+        unsafe_allow_html=True)
+    registrar_una_vez("mercado_inactivo_zona", "Mercado", "vista_inactiva", {"pantalla": "lotes_zona"})
+    st.markdown("**Herramientas activas para tu zona:**")
+    marca.enlace("vistas/alertas_fitosanitarias.py", "Alertas fitosanitarias · reportes de roya de la CNN",
+                 ":material/warning:")
+    marca.enlace("pages/1_Dashboard.py", "Indicadores municipales", ":material/monitoring:")
+    marca.enlace("pages/3_Precios.py", "Escenarios de precios · Ridge y modelos recurrentes",
+                 ":material/show_chart:")
+    marca.enlace("pages/5_Chatbot.py", "Consola técnica (RAG)", ":material/forum:")
+    st.stop()
 
 ctx = obtener_contexto()
 st.title("Oferta de café en mi zona")
