@@ -16,12 +16,12 @@ que una pantalla nueva las hereda sin escribir una línea.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import streamlit as st
 
-from cofitech import repositorio, seguridad
+from cofitech import config, repositorio, seguridad
 from cofitech.datos import normalizar
 from cofitech.contexto_finca import (
     ContextoFinca, Rol, actualizar_foco, catalogo_municipios, definir_rol, mes_anio,
@@ -52,6 +52,7 @@ MENU: dict[Rol, list[Pantalla]] = {
         Pantalla("sca", "pages/7_Calidad_SCA.py", "Calidad y primas (SCA)", ":material/sell:", "Más"),
         Pantalla("mapa", "pages/6_Mapa.py", "Mi zona en el mapa", ":material/map:", "Más"),
         Pantalla("perfil", "vistas/acceso.py", "Datos de mi finca", ":material/edit:", "Más"),
+        Pantalla("privacidad", "vistas/privacidad.py", "Aviso de privacidad", ":material/policy:", "Más"),
     ],
     Rol.AGRONOMO: [
         Pantalla("mapa", "pages/6_Mapa.py", "Mapa cafetero", ":material/map:", "Panorama regional", inicio=True),
@@ -66,6 +67,7 @@ MENU: dict[Rol, list[Pantalla]] = {
         Pantalla("rag", "pages/5_Chatbot.py", "Consola técnica (RAG)", ":material/forum:", "Consulta"),
         Pantalla("calendario", "pages/8_Asesor_Caficultor.py", "Calendario del caficultor", ":material/calendar_month:", "Consulta"),
         Pantalla("perfil", "vistas/acceso.py", "Mi zona de trabajo", ":material/edit:", "Mi cuenta"),
+        Pantalla("privacidad", "vistas/privacidad.py", "Aviso de privacidad", ":material/policy:", "Mi cuenta"),
     ],
 }
 
@@ -89,6 +91,27 @@ ETIQUETA_ROL: dict[Rol, str] = {
 }
 
 
+# Pantallas de la venta directa (RF09). En la Beta siguen en el menú, marcadas
+# como inactivas, y salen del recorrido «siguiente paso» (``config.mercado_activo``).
+PANTALLAS_MERCADO: frozenset[str] = frozenset({"venta", "lotes"})
+SUFIJO_INACTIVO = " · Inactivo"
+
+
+def menu(rol: Rol) -> list[Pantalla]:
+    """``MENU[rol]`` ajustado al despliegue: el mercado aparece como inactivo si está apagado."""
+    if config.mercado_activo():
+        return MENU[rol]
+    return [replace(p, titulo=p.titulo + SUFIJO_INACTIVO, icono=":material/block:")
+            if p.clave in PANTALLAS_MERCADO else p for p in MENU[rol]]
+
+
+def flujo(rol: Rol) -> list[str]:
+    """Recorrido del rol, sin las pantallas del mercado cuando está inactivo."""
+    if config.mercado_activo():
+        return FLUJO[rol]
+    return [clave for clave in FLUJO[rol] if clave not in PANTALLAS_MERCADO]
+
+
 def construir_paginas(rol: Rol, admin: bool = False) -> tuple[dict[str, list["StreamlitPage"]], dict[str, "StreamlitPage"]]:
     """Crea las páginas del rol (más las de ``ADMINISTRACION`` si ``admin``).
 
@@ -98,7 +121,7 @@ def construir_paginas(rol: Rol, admin: bool = False) -> tuple[dict[str, list["St
     """
     secciones: dict[str, list["StreamlitPage"]] = {}
     indice: dict[str, "StreamlitPage"] = {}
-    for p in MENU[rol] + (ADMINISTRACION if admin else []):
+    for p in menu(rol) + (ADMINISTRACION if admin else []):
         pagina = st.Page(p.archivo, title=p.titulo, icon=p.icono, url_path=p.clave, default=p.inicio)
         secciones.setdefault(p.seccion, []).append(pagina)
         indice[p.clave] = pagina
@@ -208,11 +231,11 @@ def _texto_alertas(ctx: ContextoFinca) -> str:
 # ─────────────────────────── Siguiente paso ─────────────────────────────────
 def siguiente_paso(ctx: ContextoFinca, pagina: "StreamlitPage", indice: dict[str, "StreamlitPage"]) -> None:
     """Enlace al paso que sigue en el recorrido del rol, con texto según el contexto."""
-    flujo = FLUJO[ctx.rol]
+    recorrido = flujo(ctx.rol)
     actual = clave_de(pagina, indice)
-    if actual not in flujo or flujo.index(actual) + 1 >= len(flujo):
+    if actual not in recorrido or recorrido.index(actual) + 1 >= len(recorrido):
         return
-    destino = flujo[flujo.index(actual) + 1]
+    destino = recorrido[recorrido.index(actual) + 1]
     st.divider()
     st.page_link(indice[destino], label=_etiqueta_siguiente(ctx, actual, indice[destino].title),
                  icon=":material/arrow_forward:")

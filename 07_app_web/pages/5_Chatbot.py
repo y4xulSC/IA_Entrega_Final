@@ -41,6 +41,13 @@ def cargar_agente():
     except Exception as e:
         return None, str(e)
 
+@st.cache_resource(show_spinner=False)
+def _indexar_una_vez(_agente) -> bool:
+    """Indexa una sola vez por proceso aunque varios usuarios abran el asistente a la vez."""
+    _agente.indexar()
+    return True
+
+
 agente, err = cargar_agente()
 
 if err:
@@ -62,11 +69,21 @@ try:
     n_docs = vs._collection.count()
     st.caption(f"Índice: {n_docs} chunks vectorizados")
     if n_docs == 0:
-        if st.button("📥 Indexar documentos demo"):
-            with st.spinner("Indexando..."):
-                agente.indexar()
-            st.rerun()
-        st.stop()
+        # En Streamlit Community Cloud el disco se borra en cada reinicio: el índice
+        # se reconstruye solo la primera vez que alguien abre el asistente.
+        try:
+            with st.spinner("Preparando el asistente por primera vez (indexando documentos, ~1 min)..."):
+                _indexar_una_vez(agente)
+            if vs._collection.count() > 0:
+                st.rerun()
+            st.error("La indexación terminó sin documentos: revisa 06_agente_rag/documentos_fuente/.")
+            st.stop()
+        except Exception as error_indice:
+            st.error(f"No se pudo indexar automáticamente: {error_indice}")
+            if st.button("📥 Reintentar indexación"):
+                _indexar_una_vez.clear()
+                st.rerun()
+            st.stop()
 except Exception as e:
     st.warning(f"No se pudo verificar el índice: {e}")
 

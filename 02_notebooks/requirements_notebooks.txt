@@ -1,0 +1,24 @@
+# CofiTech · dependencias para reentrenar los modelos (notebooks NB07–NB12 y
+# scripts de 03_scripts). La app web NO las necesita: así el despliegue en
+# Streamlit Community Cloud instala menos y arranca más rápido.
+#
+#   pip install -r 02_notebooks/requirements_notebooks.txt   (desde la raíz; ya incluye la app)
+#
+# Se incluye la lista de la app para que los modelos se entrenen y se guarden con
+# las mismas versiones con las que la app los carga (scikit-learn 1.6.1,
+# catboost 1.2.10, NumPy 1.x, Keras 3).
+-r ../07_app_web/requirements.txt
+
+# ── Modelos y explicabilidad usados solo en el entrenamiento
+xgboost>=2.0.0
+lightgbm>=4.0.0
+shap>=0.44.0
+fairlearn>=0.10.0          # NB11 · auditoría de equidad entre regiones
+
+# ── Gráficas y entorno de notebooks
+seaborn>=0.13.0
+jupyter>=1.0.0
+
+# ── Descarga de datos abiertos (03_scripts) y carga de documentos para el RAG
+requests>=2.31.0
+unstructured>=0.13.0

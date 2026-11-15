@@ -8,7 +8,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from cofitech import marca, seguridad
+from cofitech import marca, privacidad, seguridad
 from cofitech.contexto_finca import (
     RANGO_ALTITUD_MSNM, RANGO_AREA_HA, VARIEDADES, Rol,
     actualizar_finca, actualizar_zona, catalogo_municipios, definir_rol, obtener_contexto,
@@ -29,6 +29,8 @@ if ctx.rol is None:
         st.title("CofiTech")
         st.caption(marca.LEMA)
     eleccion = st.radio("¿Cómo vas a usar CofiTech?", list(ROLES), horizontal=True)
+    with st.expander("Aviso de privacidad (Ley 1581)", icon=":material/policy:"):
+        privacidad.mostrar()
     rol = ROLES[eleccion]
 else:
     rol = ctx.rol
@@ -73,9 +75,12 @@ if rol == Rol.CAFICULTOR:
             "Fecha de la floración principal (opcional)", value=finca.fecha_floracion_principal,
             help="Con esta fecha se decide si un control de roya está a tiempo.",
         )
+        autoriza = st.checkbox(privacidad.TEXTO_CASILLA) if ctx.rol is None else True
         enviar = st.form_submit_button("Guardar y entrar" if ctx.rol is None else "Guardar", type="primary")
 
-    if enviar:
+    if enviar and not autoriza:
+        st.error("Para entrar necesitamos tu autorización de tratamiento de datos (casilla de arriba).")
+    elif enviar:
         errores = actualizar_finca(
             municipio=municipio.strip(), departamento=departamento.strip(), codigo_dane=codigo_dane,
             altitud_msnm=altitud, area_ha=area, variedad=variedad, fecha_floracion_principal=floracion,
@@ -84,6 +89,7 @@ if rol == Rol.CAFICULTOR:
             for error in errores:
                 st.error(error)
         else:
+            privacidad.registrar_aceptacion()
             definir_rol(Rol.CAFICULTOR)
             st.rerun()
 
@@ -94,12 +100,16 @@ else:
             "¿Qué departamentos atiendes?", departamentos,
             default=[d for d in ctx.zona.departamentos if d in departamentos],
         )
+        autoriza = st.checkbox(privacidad.TEXTO_CASILLA) if ctx.rol is None else True
         enviar = st.form_submit_button("Guardar y entrar" if ctx.rol is None else "Guardar", type="primary")
 
-    if enviar:
+    if enviar and not autoriza:
+        st.error("Para entrar necesitamos tu autorización de tratamiento de datos (casilla de arriba).")
+    elif enviar:
         if not zona:
             st.error("Elige al menos un departamento.")
         else:
+            privacidad.registrar_aceptacion()
             actualizar_zona(zona)
             definir_rol(Rol.AGRONOMO)
             st.rerun()

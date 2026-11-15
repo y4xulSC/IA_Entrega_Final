@@ -341,20 +341,50 @@ def kpis_consolidados():
 
     Columnas: rol, sesiones, eventos, valoraciones_rag, satisfaccion_rag,
     validaciones_vision, confianza_aceptada, confianza_media_modelo,
-    sesiones_3_herramientas, ultimo_evento.
+    sesiones_3_herramientas, ultimo_evento y, desde la v1.6 del esquema,
+    votos_interes_mercado, interes_mercado y sesiones_simulador. Con una base
+    v1.5 esas tres columnas llegan vacías (``06_kpi_interes_mercado.sql`` las crea).
     """
     import pandas as pd
 
+    sql = f"SELECT * FROM {ESQUEMA}.vw_kpis_consolidados ORDER BY (rol = 'Total'), rol"
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql)
+        df = pd.DataFrame(cur.fetchall(), columns=[c.name for c in cur.description])
+    for col in COLUMNAS_KPI:
+        if col not in df:
+            df[col] = None
+    for col in ("satisfaccion_rag", "confianza_aceptada", "confianza_media_modelo", "interes_mercado"):
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
+    return df[list(COLUMNAS_KPI)]
+
+
+COLUMNAS_KPI: tuple[str, ...] = (
+    "rol", "sesiones", "eventos", "valoraciones_rag", "satisfaccion_rag", "validaciones_vision",
+    "confianza_aceptada", "confianza_media_modelo", "sesiones_3_herramientas", "ultimo_evento",
+    "votos_interes_mercado", "interes_mercado", "sesiones_simulador",
+)
+
+
+def interes_venta_directa() -> dict[str, Any]:
+    """KPI «Interés en la venta directa» desde ``cafe.vw_interes_venta_directa`` (esquema v1.6).
+
+    Returns:
+        ``votos``, ``a_favor``, ``interes`` (0 a 1 o ``None``) y el mismo
+        cálculo separado para quienes probaron el simulador (``interes_con_simulador``).
+    """
     sql = f"""
-        SELECT rol, sesiones, eventos, valoraciones_rag, satisfaccion_rag::float,
-               validaciones_vision, confianza_aceptada::float, confianza_media_modelo::float,
-               sesiones_3_herramientas, ultimo_evento
-          FROM {ESQUEMA}.vw_kpis_consolidados
-         ORDER BY (rol = 'Total'), rol
+        SELECT count(*), count(*) FILTER (WHERE le_gustaria),
+               avg(le_gustaria::int)::float,
+               avg(le_gustaria::int) FILTER (WHERE uso_simulador)::float,
+               count(*) FILTER (WHERE uso_simulador)
+          FROM {ESQUEMA}.vw_interes_venta_directa
     """
     with _conexion() as conn, conn.cursor() as cur:
         cur.execute(sql)
-        return pd.DataFrame(cur.fetchall(), columns=[c.name for c in cur.description])
+        votos, a_favor, interes, interes_sim, votos_sim = cur.fetchone()
+    return {"votos": int(votos), "a_favor": int(a_favor), "interes": interes,
+            "votos_con_simulador": int(votos_sim), "interes_con_simulador": interes_sim}
 
 
 def leer_eventos(limite: int = 20000) -> list[dict[str, Any]]:
@@ -514,7 +544,10 @@ def probar_conexion() -> str:
         cur.execute(f"SELECT to_regclass('{ESQUEMA}.mk_lote') IS NOT NULL")
         venta = "tablas de venta directa listas" if cur.fetchone()[0] else \
             "faltan las tablas de venta directa (ejecuta 05_marketplace.sql)"
-    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos · {venta}"
+        cur.execute(f"SELECT to_regclass('{ESQUEMA}.vw_interes_venta_directa') IS NOT NULL")
+        kpi = "KPI de interés en la venta directa listo" if cur.fetchone()[0] else \
+            "falta el KPI de interés en la venta directa (ejecuta 06_kpi_interes_mercado.sql)"
+    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos · {venta} · {kpi}"
 
 
 if __name__ == "__main__":

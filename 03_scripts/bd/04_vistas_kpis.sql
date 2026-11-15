@@ -3,6 +3,8 @@
 -- Para pegar en el SQL Editor de Supabase si ya se ejecutó 03_supabase_schema.sql.
 -- Idempotente (CREATE OR REPLACE VIEW). 03_supabase_schema.sql v1.4 ya las incluye.
 -- Requiere PostgreSQL 15+ (security_invoker).
+-- OJO: si la base ya está en v1.6 (o ejecutaste 06_kpi_interes_mercado.sql), NO
+-- ejecutes este archivo: su vw_kpis_consolidados tiene menos columnas y fallaría.
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ────────────────────────────────────────────────────────────────────────────

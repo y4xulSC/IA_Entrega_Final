@@ -1,11 +1,12 @@
 # Guía de instalación
 
-Pasos para dejar CofiTech funcionando después de clonar el repositorio: app, asistente RAG y base de datos con los datos históricos cargados. Los comandos están para **Windows PowerShell**; la versión Linux/Mac va al lado cuando cambia. Todos se ejecutan desde la raíz del repositorio, salvo que el paso diga otra cosa.
+Pasos para dejar CofiTech (versión **Beta 0.9.0**) funcionando después de clonar el repositorio: app, asistente RAG y base de datos con los datos históricos cargados. Los comandos están para **Windows PowerShell**; la versión Linux/Mac va al lado cuando cambia. Todos se ejecutan desde la raíz del repositorio, salvo que el paso diga otra cosa.
 
 | Ruta | Pasos | Tiempo aproximado |
 |---|---|---|
 | Solo ver la app (sin base de datos) | 1, 2, 3, 5, 7 | 10 min |
 | **Instalación completa** (app + base cargada) | 1 a 8 | 20–30 min |
+| Publicar la Beta en internet | 1 a 6 y «Producción» | 30–45 min |
 | Regenerar datos y modelos desde cero | Anexo A | varias horas |
 
 ---
@@ -14,10 +15,10 @@ Pasos para dejar CofiTech funcionando después de clonar el repositorio: app, as
 
 | Componente | Versión | Notas |
 |------------|---------|-------|
-| Python | **3.11** (3.10–3.12) | TensorFlow y `numpy<2` no instalan bien en versiones más nuevas |
+| Python | **3.11** | Es la versión con la que se probaron las versiones fijadas de `requirements.txt` |
 | PostgreSQL | 13 o superior (probado en 16 y 18) | Local con pgAdmin, o un proyecto gratis de [Supabase](https://supabase.com) |
 | Git | cualquiera | |
-| RAM | 8 GB | La app carga la CNN y el modelo de embeddings |
+| RAM | 8 GB | La app con todos los modelos cargados usa ~1,6 GB |
 | Internet | la primera vez | Instalar paquetes y descargar el modelo de embeddings del asistente |
 
 Cuentas opcionales: [Groq](https://console.groq.com) (gratis) para que el asistente responda; Supabase para la base en la nube.
@@ -47,13 +48,18 @@ Qué trae el clon y qué no:
 ## Paso 2 · Entorno de Python
 
 ```powershell
-python -m venv .venv
+py -3.11 -m venv .venv                 # Linux/Mac: python3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1           # Linux/Mac: source .venv/bin/activate
+python --version                       # debe decir 3.11.x
 python -m pip install --upgrade pip
 pip install -r 07_app_web/requirements.txt
 ```
 
-`scikit-learn` está fijado en 1.6.1 porque el modelo de rendimiento (`.pkl`) solo carga con esa versión. La app necesita Streamlit 1.49 o superior.
+Usa el Python 3.11 de [python.org](https://www.python.org/downloads/) (o `winget install Python.Python.3.11`), no el de Microsoft Store, y trabaja siempre con el `.venv` activado: con el Python global quedan versiones mezcladas (por ejemplo `pyarrow` 24, que no funciona con NumPy 1.x) y las pruebas fallan.
+
+Las versiones están fijadas porque son las probadas: `scikit-learn` 1.6.1 y `catboost` 1.2.10 son las únicas con las que carga el modelo de rendimiento (`.pkl`), NumPy se queda en 1.x porque así se entrenaron los modelos, y `pyarrow` en 19 porque las versiones nuevas exigen NumPy 2. En Linux se instala `tensorflow-cpu` (más liviano); en Windows y macOS, `tensorflow`.
+
+Este archivo solo trae lo que usa la app. Para **reentrenar** (notebooks y scripts, con XGBoost, LightGBM, SHAP, seaborn, Jupyter…) usa en su lugar `pip install -r 02_notebooks/requirements_notebooks.txt`, que incluye el de la app.
 
 ---
 
@@ -79,6 +85,11 @@ PG_DB=cafe_ia
 
 # ── Contraseña de administrador (paso 6): se pega el HASH, nunca la contraseña
 # COFITECH_ADMIN_HASH=pbkdf2_sha256:600000:...
+
+# ── Beta: venta directa inactiva (0). Pon 1 solo para probar el mercado en local.
+# COFITECH_MERCADO_ACTIVO=0
+# ── Correo o enlace para los derechos de la Ley 1581 (aviso de privacidad)
+# COFITECH_CONTACTO_DATOS=cofitech@<dominio>
 
 LOG_LEVEL=INFO
 LOG_DIR=05_resultados/logs
@@ -109,7 +120,7 @@ psql -U postgres -d cafe_ia -f 03_scripts/bd/01_ddl_schema.sql
 psql -U postgres -d cafe_ia -f 03_scripts/bd/03_supabase_schema.sql
 ```
 
-La última fila debe decir `OK (v1.5) · esquema cafe con 18 tablas…; 5 compradores`.
+La última fila debe decir `OK (v1.6) · esquema cafe con 18 tablas…; 5 compradores`.
 
 ### Opción B · Supabase
 
@@ -177,21 +188,21 @@ Probar:
 python 03_scripts/bd/db_client.py
 ```
 
-Debe decir `OK · PostgreSQL … · tablas de venta directa listas`.
+Debe decir `OK · PostgreSQL … · tablas de venta directa listas · KPI de interés en la venta directa listo`.
 
-> **¿Ya tenías la base de una versión anterior (v1.4)?** Ejecuta solo `03_scripts/bd/05_marketplace.sql`: agrega las tablas de venta directa sin tocar lo demás. Detalle en `03_scripts/bd/README.md`.
+> **¿Ya tenías la base de una versión anterior?** v1.5: ejecuta `03_scripts/bd/06_kpi_interes_mercado.sql` (KPI de interés en la venta directa; solo vistas). v1.4: `05_marketplace.sql` y luego `06_kpi_interes_mercado.sql`. Ninguno borra datos. Detalle en `03_scripts/bd/README.md`.
 
 ---
 
 ## Paso 5 · Índice del asistente RAG
 
-El índice de ChromaDB no está en git. Créalo una vez (la primera vez descarga el modelo de embeddings `all-MiniLM-L6-v2`, necesita internet):
+El índice de ChromaDB no está en git. **La app lo crea sola** la primera vez que alguien abre «¿Qué hago?» (tarda unos segundos y descarga el modelo de embeddings `all-MiniLM-L6-v2`, necesita internet). Si prefieres crearlo antes:
 
 ```powershell
 python 06_agente_rag/rag_pipeline.py indexar
 ```
 
-Para probarlo sin abrir la app: `python 06_agente_rag/rag_pipeline.py demo` (requiere `GROQ_API_KEY` u Ollama). También se puede indexar desde la app, con el botón «Indexar documentos demo» de la pantalla del asistente.
+Para probarlo sin abrir la app: `python 06_agente_rag/rag_pipeline.py demo` (requiere `GROQ_API_KEY` u Ollama). Si la indexación automática falla, la pantalla del asistente muestra el error y el botón «Reintentar indexación».
 
 Sin clave de Groq se puede usar Ollama local: ver `06_agente_rag/README.md`.
 
@@ -220,12 +231,15 @@ Abre http://localhost:8501. Lánzala **desde `07_app_web`**: así Streamlit lee 
 
 Recorrido para comprobar que todo funciona:
 
-1. **Ingreso:** elige «Soy caficultor», un municipio, y entra.
-2. **Hoy en mi finca:** precio FNC, clima, tareas del mes y aviso de compradores.
+1. **Ingreso:** arriba aparece la franja **BETA**. Elige «Soy caficultor» y un municipio, marca la casilla de autorización de datos (sin ella no deja entrar) y entra.
+2. **Hoy en mi finca:** precio FNC, clima, tareas del mes y la invitación «¿Viste manchas en las hojas?».
 3. **Revisar una hoja:** sube una foto de una hoja; aparece el diagnóstico con Grad-CAM.
-4. **¿Qué hago?:** pregunta al asistente (necesita el paso 5).
-5. **Vender mi café:** publica un lote; en «Mis lotes y mensajes» llega una oferta de un comprador de demostración.
-6. **Cambiar de rol** → «Agrónomo / Cooperativa»: alertas fitosanitarias, indicadores y «Oferta de café en mi zona».
+4. **¿Qué hago?:** pregunta al asistente (la primera vez crea el índice; necesita `GROQ_API_KEY`).
+5. **Vender mi café · Inactivo:** aviso «Inactivo en la Beta» y el **simulador de venta**: «Ver ofertas simuladas», negociar con un comprador de demostración y cerrar la venta de práctica. Abajo, vota 👍/👎 en «¿Te gustaría vender tu café desde CofiTech?»: como administrador, el voto aparece en «Telemetría y KPIs» → *Interés en la venta directa*.
+6. **Aviso de privacidad** (sección «Más»): el texto de la Ley 1581.
+7. **Cambiar de rol** → «Agrónomo / Cooperativa»: alertas fitosanitarias, indicadores y escenarios de precio.
+
+Para probar la venta directa en local, pon `COFITECH_MERCADO_ACTIVO=1` en el `.env` y relanza: publica un lote y en «Mis lotes y mensajes» llega una oferta de un comprador de demostración.
 
 En el panel lateral de depuración (solo administradores) debe aparecer `Supabase: conectada` si hiciste el paso 4.5.
 
@@ -246,19 +260,63 @@ $env:COFITECH_TEST_DB_URL = "postgresql://postgres:<clave>@localhost:5432/cafe_p
 python -m pytest tests -q -rs
 ```
 
-Con Streamlit 1.49 fallan 4 pruebas de `test_seguridad.py` porque esa versión del probador (`AppTest`) no lanza error al abrir una página no registrada; con versiones más nuevas pasan todas.
+Resultado esperado con las versiones de `requirements.txt`: **91 pasan y 6 se omiten** sin base de pruebas; **97 pasan** con ella (la base de pruebas debe estar en v1.6). `tests/test_produccion.py` cubre lo propio de la Beta: franja, mercado inactivo, autorización de datos y que TensorFlow y el asistente convivan en Linux.
 
 ---
 
-## Despliegue en Streamlit Community Cloud
+## Producción (Beta) en Streamlit Community Cloud
 
-1. Sube el repositorio a GitHub (sin `.env` ni `secrets.toml`: ya están en `.gitignore`).
-2. En https://share.streamlit.io → *Create app* → repositorio, rama y archivo principal `07_app_web/app.py`.
-3. En *Advanced settings* → *Python version* elige 3.11.
-4. En *Settings* → *Secrets* pega el contenido de tu `secrets.toml`: `GROQ_API_KEY`, `COFITECH_ADMIN_HASH` (al inicio, antes de cualquier sección) y `[connections.postgresql] url` con la cadena del pooler de Supabase.
-5. El índice del asistente no existe en la nube la primera vez: créalo con el botón «Indexar documentos demo» de la pantalla del asistente.
+Todo gratis: la app en **Streamlit Community Cloud** y la base en **Supabase** (paso 4, opción B). Lo que corre en la nube son los mismos modelos `.keras` y `.pkl` del repositorio y el mismo modelo de embeddings: no hay versión recortada.
 
-El despliegue oficial del proyecto no usa Docker. `08_docker/` es una configuración heredada.
+**1. Antes de publicar**
+
+- Base de Supabase creada y cargada (paso 4, opción B) y `db_client.py` en OK.
+- Hash de administrador generado (paso 6).
+- Repositorio en GitHub **sin** `.env` ni `secrets.toml` (ya están en `.gitignore`). Revisa con `git status` antes de cada `git push`.
+
+**2. Crear la app** en https://share.streamlit.io → *Create app* → *Deploy a public app from GitHub*:
+
+| Campo | Valor |
+|---|---|
+| Repository | `y4xulSC/IA_Entrega_Final` |
+| Branch | `main` |
+| Main file path | `07_app_web/app.py` |
+| App URL | `cofitech` → `https://cofitech.streamlit.app` (si el nombre está tomado, usa otro, p. ej. `cofitech-uao`) |
+| Advanced settings → Python version | **3.11** |
+| Advanced settings → Secrets | el bloque de abajo |
+
+```toml
+GROQ_API_KEY = "<tu clave de Groq>"
+COFITECH_ADMIN_HASH = "pbkdf2_sha256:600000:..."
+COFITECH_MERCADO_ACTIVO = "0"
+# COFITECH_CONTACTO_DATOS = "cofitech@<dominio>"
+
+[connections.postgresql]
+url = "postgresql://postgres.<PROJECT_REF>:<CONTRASEÑA>@aws-0-<REGION>.pooler.supabase.com:5432/postgres"
+```
+
+Las claves sueltas van **antes** de `[connections.postgresql]`. Streamlit lee `07_app_web/requirements.txt` porque está junto al archivo principal. La primera instalación tarda varios minutos (TensorFlow y PyTorch).
+
+**3. Primera prueba en la nube:** haz el recorrido del paso 7 en la dirección pública, incluido «¿Qué hago?» (crea el índice del asistente la primera vez). Como administrador, el panel de depuración debe decir `Supabase: conectada`.
+
+**4. Mantener la base despierta.** Supabase pausa los proyectos gratis tras unos 7 días sin actividad. El flujo `.github/workflows/supabase_keepalive.yml` hace una consulta de solo lectura cada 3 días. Actívalo una vez: GitHub → *Settings* → *Secrets and variables* → *Actions* → *New repository secret* → nombre `SUPABASE_DB_URL`, valor la misma cadena del pooler. Pruébalo en *Actions* → *Supabase keep-alive* → *Run workflow*.
+
+**Límites del plan gratis que hay que conocer**
+
+| Límite | Efecto en CofiTech |
+|---|---|
+| ~2,7 GB de memoria | La app completa usa ~1,6 GB medidos con todos los modelos cargados |
+| La app se duerme tras 12 h sin visitas | El primer visitante ve «This app has gone to sleep» y la despierta con un clic (~1 min) |
+| Solo subdominios `*.streamlit.app` | Un dominio propio (cofitech.co) no se puede apuntar directo |
+| Supabase pausa la base sin actividad | Lo evita el keep-alive del punto 4 |
+
+**Ajustes de la Beta**
+
+- `COFITECH_MERCADO_ACTIVO = "0"` deja «Vender mi café» y «Oferta de café en mi zona» en el menú, marcadas como *Inactivo*, fuera del recorrido del caficultor y sin escribir en las tablas `mk_*`. Con `"1"` vuelven a funcionar sin cambiar código.
+- La franja **BETA** y la versión (`0.9.0`) salen de `07_app_web/cofitech/config.py`.
+- El aviso de privacidad está en `07_app_web/cofitech/privacidad.py`. Si cambia lo que la app guarda, actualiza el texto y su `VERSION_AVISO`.
+
+El despliegue oficial no usa Docker. `08_docker/` es una configuración heredada. Hugging Face Spaces dejó de ser alternativa gratis para apps nuevas con Docker/Gradio en CPU.
 
 ---
 
@@ -280,6 +338,7 @@ python 03_scripts/utilidades/construir_master_municipal.py
 # 4. Volver a cargar la base: paso 4.2 y 4.3
 
 # 5. Entrenar en 02_notebooks/: NB07, NB09, NB10, NB11, NB12 y NB08 (CNN, mejor con GPU o Colab)
+pip install -r 02_notebooks/requirements_notebooks.txt
 ```
 
 `run_all.bat` y `run_all.sh` ejecutan este flujo completo con las descargas. No son necesarios para usar la app y solo crean el esquema `01`: si los usas, ejecuta después `03_supabase_schema.sql`.
@@ -296,9 +355,16 @@ python 03_scripts/utilidades/construir_master_municipal.py
 | Supabase: `connection refused` o `timeout` | Usa la cadena del **Session pooler** (IPv4), no la *Direct connection*, y `PGSSLMODE=require` |
 | `there is no unique or exclusion constraint matching the ON CONFLICT` | Estás usando un script viejo: descarga la versión actual de `03_supabase_schema.sql` |
 | `db_client.py` dice «faltan las tablas de venta directa» | Ejecuta `03_scripts/bd/05_marketplace.sql` |
+| `db_client.py` dice «falta el KPI de interés en la venta directa» | Ejecuta `03_scripts/bd/06_kpi_interes_mercado.sql` |
 | El modelo de rendimiento no carga | `pip install scikit-learn==1.6.1` |
 | «No se pudo cargar el agente RAG» o el asistente no responde | Falta `GROQ_API_KEY` en el `.env` (o en los Secrets de la nube), o no se hizo el paso 5 |
 | La app no cambia después de editar código | Detén Streamlit (Ctrl+C) y vuelve a lanzarlo |
+| Pytest: `PermissionError: [WinError 5] Acceso denegado: '...\\Temp\\pytest-of-<usuario>'` | Pasa con el Python de Microsoft Store. Usa un entorno `.venv` con Python 3.11 de python.org (paso 2). Mientras tanto: `python -m pytest tests -q --basetemp=%USERPROFILE%\\pytest_cofitech` |
+| Pytest: fallan 4 pruebas de `test_seguridad.py` («DID NOT RAISE», `IndexError`) | El entorno tiene otra versión de Streamlit: instala las fijadas con `pip install -r 07_app_web/requirements.txt` dentro del `.venv` |
+| En la nube la app se reinicia con `LLVM ERROR: inconsistency in registered CommandLine options` | Choque entre TensorFlow y Triton (PyTorch) en Linux; lo evita `cofitech/__init__.py`. No quites ese archivo ni importes TensorFlow antes de `cofitech` |
+| `A module that was compiled using NumPy 1.x cannot be run in NumPy 2` o error en `st.dataframe` | Se instaló otra versión de `pyarrow` o `numpy`: reinstala con `pip install -r 07_app_web/requirements.txt` |
+| La app en la nube dice que la base no responde después de unos días | Supabase pausó el proyecto: reanúdalo en su panel y activa el keep-alive (Producción, punto 4) |
+| No puedo entrar: «necesitamos tu autorización» | Marca la casilla del aviso de privacidad en la pantalla de ingreso |
 | No aparecen las páginas de administración | Paso 6 y entra por «Acceso administrador» |
 
 ---
@@ -307,10 +373,12 @@ python 03_scripts/utilidades/construir_master_municipal.py
 
 - [ ] Entorno creado y `pip install -r 07_app_web/requirements.txt` sin errores
 - [ ] `.env` en la raíz con `GROQ_API_KEY` y los datos `PG_*`
-- [ ] Base creada (`01` + `03` en local, o `03` en Supabase) con la fila `OK (v1.5)`
+- [ ] Base creada (`01` + `03` en local, o `03` en Supabase) con la fila `OK (v1.6)`
 - [ ] `validar_pre_carga.py` con `Total OK: 6/6`
 - [ ] `02_carga_inicial.py` con «CARGA INICIAL COMPLETADA» y los conteos del paso 4.4
 - [ ] `db_client.py` con «tablas de venta directa listas»
 - [ ] Índice del asistente creado
-- [ ] App en http://localhost:8501 con el recorrido del paso 7 completo
+- [ ] App en http://localhost:8501 con el recorrido del paso 7 completo (franja BETA, casilla de autorización, venta inactiva)
 - [ ] Pruebas en verde
+- [ ] (Producción) App en Streamlit Community Cloud con Python 3.11 y los Secrets
+- [ ] (Producción) Secreto `SUPABASE_DB_URL` en GitHub y el flujo *Supabase keep-alive* en verde

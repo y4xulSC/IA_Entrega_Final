@@ -1,4 +1,4 @@
-"""CofiTech · Plataforma Dual Adaptativa por Roles (MockUp final, Opción 3 del AHP).
+"""CofiTech · Plataforma Dual Adaptativa por Roles (MockUp final, Opción 3 del AHP) · versión Beta.
 
 Ejecutar:
     cd 07_app_web
@@ -29,7 +29,7 @@ from dataclasses import asdict
 
 import streamlit as st
 
-from cofitech import marca, repositorio, seguridad
+from cofitech import config, marca, repositorio, seguridad
 
 from cofitech import navegacion as nav
 from cofitech.contexto_finca import obtener_contexto, registrar_diagnostico, reiniciar_muestreo
@@ -75,14 +75,15 @@ def _panel_esqueleto() -> None:
         if st.button("Reiniciar muestreo", use_container_width=True):
             reiniciar_muestreo()
             st.rerun()
-        if st.button("Simular lote publicado", use_container_width=True,
-                     help="Lote de prueba (es_demo) en el municipio de la finca, para ensayar Vender y la consola."):
+        if config.mercado_activo() and st.button(
+                "Simular lote publicado", use_container_width=True,
+                help="Lote de prueba (es_demo) en el municipio de la finca, para ensayar Vender y la consola."):
             _simular_lote()
             st.rerun()
         st.json(json.loads(json.dumps(asdict(obtener_contexto()), default=str)), expanded=1)
 
 
-st.set_page_config(page_title="CofiTech", page_icon=marca.ICONO, layout="wide")
+st.set_page_config(page_title=f"CofiTech · {config.ETAPA}", page_icon=marca.ICONO, layout="wide")
 
 if _version_streamlit() < VERSION_MINIMA:
     st.error(
@@ -92,6 +93,7 @@ if _version_streamlit() < VERSION_MINIMA:
     st.stop()
 
 marca.aplicar()                              # logo oficial en la barra lateral + estilos del MockUp
+marca.aviso_beta()                           # franja «Beta» arriba de todas las pantallas, también el ingreso
 
 ctx = obtener_contexto()
 

@@ -17,6 +17,8 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image
 
+from cofitech import config
+
 ASSETS: Path = Path(__file__).resolve().parents[1] / "assets"
 RUTA_EMBLEMA: Path = ASSETS / "emblema_cofitech.png"
 RUTA_HORIZONTAL: Path = ASSETS / "logo_horizontal.png"
@@ -73,6 +75,23 @@ _CSS = f"""
 .ct-burbuja.ellos{{background:#fff;border:1px solid {COLORES['linea']};border-bottom-left-radius:4px}}
 .ct-burbuja.sistema{{margin:6px auto;background:{COLORES['crema']};color:{COLORES['cafe']};font-size:.82rem;text-align:center}}
 .ct-burbuja .meta{{display:block;font-size:.7rem;opacity:.7;margin-top:2px}}
+.ct-beta{{display:flex;gap:10px;align-items:flex-start;background:#FDF6E2;border:1px solid #EED690;border-radius:12px;
+         padding:8px 12px;margin-bottom:10px;font-size:.84rem;color:#5A4410;line-height:1.4}}
+.ct-beta b.et{{flex:none;background:{COLORES['oro']};color:#2C1A11;border-radius:999px;padding:1px 9px;font-size:.72rem;
+              letter-spacing:.06em;margin-top:1px}}
+.ct-inactivo{{background:#fff;border:1px dashed {COLORES['suave']};border-radius:16px;padding:16px 18px;margin:6px 0 12px}}
+.ct-inactivo .et{{display:inline-block;background:{COLORES['crema']};color:{COLORES['suave']};border-radius:999px;
+                 padding:2px 10px;font-size:.74rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}}
+.ct-inactivo .v{{font-size:1.1rem;font-weight:800;margin:8px 0 4px}}
+.ct-inactivo .s{{font-size:.88rem;color:{COLORES['suave']};line-height:1.45}}
+.ct-sim{{background:linear-gradient(135deg,#fff 0%,{COLORES['crema']} 100%);border:1px solid {COLORES['linea']};
+  border-radius:18px;padding:16px 18px;margin:14px 0 6px}}
+.ct-sim .t{{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;font-size:1.15rem}}
+.ct-sim .s{{font-size:.88rem;color:{COLORES['suave']};margin-top:4px;line-height:1.45}}
+.ct-paso{{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1rem;margin:16px 0 6px}}
+.ct-paso b{{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:{COLORES['cafe']};
+  color:#fff;font-size:.8rem;flex:none}}
+.ct-oferta.normal{{border:1px solid {COLORES['linea']}}}
 </style>
 """
 
@@ -87,6 +106,37 @@ def aplicar() -> None:
 def pct(valor: float, signo: bool = True) -> str:
     """Porcentaje con coma decimal: ``+5,7 %``."""
     return (f"{valor:+.1f}" if signo else f"{valor:.1f}").replace(".", ",") + " %"
+
+
+def aviso_beta() -> None:
+    """Franja «Beta» arriba de todas las pantallas (la dibuja el enrutador)."""
+    st.markdown(
+        f'<div class="ct-beta"><b class="et">{_e(config.ETAPA.upper())}</b><span>CofiTech {_e(config.VERSION)} está '
+        "en fase de prueba. Los diagnósticos, proyecciones y respuestas del asistente son apoyo a la decisión: "
+        "no reemplazan la visita del extensionista ni la etiqueta del producto.</span></div>",
+        unsafe_allow_html=True)
+
+
+def enlace(ruta: str, etiqueta: str, icono: str | None = None) -> None:
+    """``st.page_link`` que no rompe la pantalla si la página no está en el menú de este rol."""
+    try:
+        st.page_link(ruta, label=etiqueta, icon=icono)
+    except Exception:          # StreamlitAPIException: página no registrada en st.navigation
+        st.markdown(f"- {etiqueta}")
+
+
+def tarjeta_inactiva(titulo: str, detalle: str, etiqueta: str = "Inactivo en la Beta") -> str:
+    return (f'<div class="ct-inactivo"><span class="et">{_e(etiqueta)}</span>'
+            f'<div class="v">{_e(titulo)}</div><div class="s">{_e(detalle)}</div></div>')
+
+
+def cabecera_simulador(titulo: str, detalle: str, etiqueta: str = "Simulación") -> str:
+    return (f'<div class="ct-sim"><div class="t"><span>{_e(titulo)}</span>'
+            f'<span class="ct-chip demo">{_e(etiqueta)}</span></div><div class="s">{_e(detalle)}</div></div>')
+
+
+def paso(numero: int, titulo: str) -> str:
+    return f'<div class="ct-paso"><b>{numero}</b><span>{_e(titulo)}</span></div>'
 
 
 def _e(texto: object) -> str:

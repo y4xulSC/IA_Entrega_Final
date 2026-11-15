@@ -1,6 +1,6 @@
 # CofiTech · Bitácora del MockUp: decisiones y hallazgos
 
-Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_rag/`, `03_scripts/bd/` y `03_scripts/ahp/`.
+Actualizado: 2026-11-15 (versión Beta 0.9.0). Código en `IA_Entrega_Final/07_app_web/`, `06_agente_rag/`, `03_scripts/bd/` y `03_scripts/ahp/`.
 
 ## Decisiones tomadas
 
@@ -8,7 +8,7 @@ Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 |---|---|
 | Roles | Dos perfiles: Caficultor (simple, móvil) y Agrónomo / Cooperativa (técnico, escritorio). Las 9 pantallas originales se conservan. |
 | Administrador | Permiso de sesión, no un tercer rol: el administrador usa la app como Caficultor o Agrónomo y además ve la sección «Administración» (Telemetría y KPIs, Ficha técnica de modelos) y el panel de depuración. Contraseña única; se guarda solo su hash PBKDF2-SHA256 en `COFITECH_ADMIN_HASH` (`.env` o `secrets.toml`), generado con `python 07_app_web/cofitech/seguridad.py`. Bloqueo de 60 s tras 5 intentos por sesión y de 5 min tras 20 fallos en el servidor. Bitácora en `05_resultados/logs/accesos_admin.jsonl`. Toda la app consulta `seguridad.es_admin()`: para pasar a `st.login` (Google) o Supabase Auth se cambia solo esa función. |
-| Punto de entrada | `app.py` es el enrutador por roles (`streamlit run app.py`); `app_mockup.py` quedó como alias. La portada anterior pasó a `vistas/ficha_tecnica.py` (solo administradores), con la tabla de estado de modelos corregida. Requiere Streamlit ≥ 1.49. |
+| Punto de entrada | `app.py` es el enrutador por roles (`streamlit run app.py`); `app_mockup.py` quedó como alias. La portada anterior pasó a `vistas/ficha_tecnica.py` (solo administradores), con la tabla de estado de modelos corregida. Probado con Streamlit 1.67 (fijado en `requirements.txt`). |
 | Estado compartido | `cofitech/contexto_finca.py`: finca, zona y municipio en foco, clima, precio, diagnóstico, muestreo (incluida la incidencia medida en el lote), predicción. El riesgo también va en `st.session_state["riesgo_fitosanitario"]`. |
 | Rendimiento | Cifra principal = último rendimiento EVA del municipio (dato real). El `.pkl` de NB09 queda solo para el Agrónomo como simulador rotulado «datos simulados». |
 | Riesgo fitosanitario | Roya con probabilidad ≥ 80 % en alguna hoja del muestreo ⇒ «Alto». Manda la peor hoja de la sesión, no la última. |
@@ -33,6 +33,13 @@ Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 | Identidad visual en la app | Logo oficial recortado sin redibujar (`07_app_web/assets/generar_logos.py`): emblema como ícono de pestaña, logo horizontal en la barra lateral (`st.logo`), logo completo en el ingreso. Tema de `config.toml` con los tokens de la lámina de Sofía e Inter servida localmente (`static/fonts`), sin depender de internet. |
 | Inicio del caficultor | «Hoy en mi finca» rehecha como la lámina de Sofía: tarjeta café con el precio FNC y su variación, clima y última hoja, tareas del mes y aviso de compradores. Ya no pide municipio, altitud ni área en la barra lateral: cumplía mal RF01. |
 | Venta directa (RF09) | Pasos 5–7 del MockUp implementados: «Vender mi café» (compradores, publicar lote, mis lotes y chat con oferta formal, aceptar / rechazar / contraofertar) y, para la cooperativa, «Oferta de café en mi zona». Tablas `cafe.mk_comprador`, `mk_lote`, `mk_oferta` (total calculado en la base), `mk_mensaje` y vista `vw_lotes_zona` (v1.5 del esquema o migración `05_marketplace.sql`, probadas dos veces en PostgreSQL 16 y 18). Respaldo local en `05_resultados/marketplace/`. Telemetría con la herramienta `Mercado` (sin texto de los mensajes). Sin nombre, teléfono ni documento del caficultor. |
+| Versión Beta 0.9.0 (15-nov-2026) | Primera versión para producción. Franja «BETA» en todas las pantallas, incluido el ingreso (`marca.aviso_beta()`; versión y etapa en `cofitech/config.py`). El activo de la Beta son las herramientas de IA (CNN con Grad-CAM, redes recurrentes, ML de rendimiento y precios, RAG). |
+| Venta directa en la Beta | **Inactiva.** «Vender mi café» y «Oferta de café en mi zona» siguen en el menú con el sufijo «· Inactivo», salen del recorrido «siguiente paso» y muestran una tarjeta «Inactivo en la Beta» con enlaces a las herramientas de IA, antes de tocar las tablas `mk_*`. «Hoy en mi finca» cambia el aviso de compradores por «¿Viste manchas en las hojas?». Todo el código del mercado se conserva y se reactiva con `COFITECH_MERCADO_ACTIVO=1` (`secrets.toml`, variable de entorno o `.env`). |
+| Ley 1581 | Aviso de privacidad (`cofitech/privacidad.py`, versión 2026-11-15) en el ingreso y en una página por rol. Casilla de autorización obligatoria para entrar. Describe lo que la app guarda de verdad: sin fotos, sin texto de preguntas, sin nombre ni teléfono; transferencia a Groq (EE. UU.) y Supabase. Contacto configurable con `COFITECH_CONTACTO_DATOS`. |
+| Despliegue de producción | Streamlit Community Cloud (Python 3.11, archivo principal `07_app_web/app.py`, subdominio previsto `cofitech`) + Supabase. `requirements.txt` con versiones fijadas y solo lo que la app importa; lo de entrenamiento pasó a `02_notebooks/requirements_notebooks.txt`. Memoria medida: ~1,6 GB con todos los modelos cargados (límite 2,7 GB). Keep-alive de Supabase cada 3 días en `.github/workflows/supabase_keepalive.yml` (secreto `SUPABASE_DB_URL`). |
+| Simulador de venta (Beta) | «Vender mi café» inactiva muestra un simulador: el caficultor describe un lote, ve las ofertas de los 5 compradores de demostración (mejor oferta, total, diferencia frente a vender todo al precio FNC, por qué los demás no ofertaron y consejos), negocia por rondas y cierra una venta de práctica. Usa las mismas reglas de `cofitech/mercado.py`; nunca muestra compradores reales ni escribe en `mk_*`. Telemetría: `simulacion_venta`, `simulacion_contraoferta`, `simulacion_cierre` (sin texto). |
+| KPI «Interés en la venta directa» | Voto 👍/👎 «¿Te gustaría vender tu café desde CofiTech?» al final de la pantalla, uno por sesión, con `uso_simulador`. En la base: `vw_kpis_consolidados` (`votos_interes_mercado`, `interes_mercado`, `sesiones_simulador`) y `vw_interes_venta_directa`; esquema v1.6 o migración `06_kpi_interes_mercado.sql` (solo vistas, probada dos veces en PostgreSQL 16). En «Telemetría y KPIs»: interés total, interés de quienes usaron el simulador y sesiones con simulación. Criterio propuesto para activar RF09: ≥ 30 votos, interés > 60 % y un comprador real. |
+| Índice del asistente | Se crea solo la primera vez que se abre «¿Qué hago?» (`st.cache_resource`), con botón «Reintentar indexación» si falla. En la nube ya no hay que entrar a indexar a mano. |
 
 ## Hallazgos de auditoría que afectan la sustentación
 
@@ -54,7 +61,9 @@ Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 16. **La persistencia se probó contra PostgreSQL 16 y 18 locales con los roles de Supabase, no contra un proyecto Supabase real.** Falta la prueba con la cadena del pooler del equipo.
 17. **Los roles Caficultor y Agrónomo no tienen autenticación:** cualquiera puede elegir «Agrónomo» y ver los reportes de todos los caficultores. Solo la administración está protegida. Se resuelve con usuarios en base de datos (Supabase Auth) o `st.login`.
 18. **Los compradores de la venta directa son ficticios** (cinco, marcados «(demo)») y la app responde por ellos con reglas fijas (prima sobre FNC, margen de negociación de 1,25 × la prima). Valida el flujo, no la demanda real; la pantalla lo dice. Sin autenticación (punto 17), un lote publicado solo lo ve la sesión que lo creó.
-19. **AppTest no maneja `st.segmented_control` de selección única** (falla al volver a ejecutar): Vender usa `st.radio` horizontal. Con Streamlit 1.49 cuatro pruebas antiguas de `test_seguridad.py` fallan porque `AppTest.switch_page` ya no lanza error para páginas no registradas; con 1.65 pasan las 80.
+19. **AppTest no maneja `st.segmented_control` de selección única** (falla al volver a ejecutar): Vender usa `st.radio` horizontal. Con Streamlit 1.49 cuatro pruebas antiguas de `test_seguridad.py` fallan porque `AppTest.switch_page` ya no lanza error para páginas no registradas; con 1.65 pasan las 80. Con la 1.67 fijada para la Beta y el simulador: 91 pasan y 6 se omiten sin base de pruebas; 97 pasan con ella.
+20. **En Linux la app se caía al abrir el asistente después de revisar una hoja.** TensorFlow y Triton (que llega con PyTorch por *sentence-transformers*) registran las mismas opciones de LLVM; si TensorFlow carga primero, el proceso aborta con `LLVM ERROR: inconsistency in registered CommandLine options` y tumba la app para todos los usuarios. En Windows no pasa, por eso no se había visto. Corregido cargando Triton primero en `cofitech/__init__.py`; lo verifica `tests/test_produccion.py`.
+21. **`pyarrow` ≥ 23 exige NumPy 2** y rompe `st.dataframe` con `numpy<2`: una instalación limpia en la nube habría fallado en las tablas. Fijado `pyarrow==19.0.1` y `pandas==2.3.3`. `tf-keras` se quitó porque instalaba TensorFlow completo junto a `tensorflow-cpu`.
 
 ## Pendiente
 
@@ -68,3 +77,8 @@ Actualizado: 2026-10-19. Código en `IA_Entrega_Final/07_app_web/`, `06_agente_r
 - Actualizar el nombre del LLM en el corpus del RAG (y reindexar).
 - Guardar escaladores y ventanas de las redes recurrentes de NB10 para poder ejecutarlas y validarlas contra la referencia ingenua.
 - Medir el tiempo de Grad-CAM en Streamlit Cloud.
+- Publicar la Beta en Streamlit Community Cloud (confirmar que el subdominio `cofitech` esté libre) y crear el secreto `SUPABASE_DB_URL` en GitHub para el keep-alive.
+- Medir la memoria real en la nube (la de 1,6 GB no incluye los pesos del modelo de embeddings, que el proxy de pruebas no dejó descargar).
+- Pedir a la oficina jurídica de la UAO que revise el aviso de privacidad y definir el correo de contacto (`COFITECH_CONTACTO_DATOS`).
+- Automatizar la actualización de datos (precio FNC, ONI): hoy es manual.
+- Ejecutar `06_kpi_interes_mercado.sql` en Supabase (o el `03` completo v1.6) y revisar el KPI de interés en la venta directa antes de decidir si se activa RF09.

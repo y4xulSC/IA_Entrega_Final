@@ -7,6 +7,8 @@
 
 <img src="07_app_web/assets/logo_completo.png" alt="Logo de CofiTech" width="220">
 
+> **Versión Beta 0.9.0.** CofiTech está en fase de prueba. Los diagnósticos, proyecciones y respuestas del asistente apoyan la decisión del caficultor, pero no reemplazan la visita del extensionista ni la etiqueta del producto. En esta versión las herramientas activas son las de inteligencia artificial (CNN, redes recurrentes, modelos de ML, RAG). **La venta directa de café está inactiva:** en su lugar hay un simulador de venta y la pregunta «¿Te gustaría vender tu café desde CofiTech?», cuyo 👍/👎 se mide como KPI para decidir si se activa.
+
 ---
 
 ## ¿Qué es?
@@ -15,8 +17,8 @@ CofiTech es una plataforma web con **dos vistas según el rol**, que comparten l
 
 | Rol | Para qué sirve |
 |---|---|
-| **Caficultor** (celular) | Ver el día de su finca, diagnosticar una hoja con la cámara, saber qué hacer, proyectar cosecha e ingreso y vender su café directo a compradores. |
-| **Agrónomo / Cooperativa** (escritorio) | Ver el panorama de su zona: alertas de roya a partir de las fotos de los caficultores, indicadores municipales, escenarios de precio, oferta de café por municipio y consola técnica con el asistente. |
+| **Caficultor** (celular) | Ver el día de su finca, diagnosticar una hoja con la cámara, saber qué hacer, proyectar cosecha e ingreso. *Vender mi café: inactivo en la Beta.* |
+| **Agrónomo / Cooperativa** (escritorio) | Ver el panorama de su zona: alertas de roya a partir de las fotos de los caficultores, indicadores municipales, escenarios de precio y consola técnica con el asistente. *Oferta de café en mi zona: inactiva en la Beta.* |
 
 La finca se registra una sola vez y todas las pantallas la usan: el diagnóstico ajusta la proyección de cosecha y llega como contexto al asistente.
 
@@ -30,7 +32,8 @@ La finca se registra una sola vez y todas las pantallas la usan: el diagnóstico
 | Precio interno FNC | Simulador Ridge validado + modelos experimentales de NB10 | `pages/3_Precios.py`, `cofitech/precios_ridge.py` |
 | Anomalías de precio | Volatilidad móvil sin datos futuros (Autoencoder y VAE en NB12) | `vistas/anomalias_precios.py` |
 | Alertas fitosanitarias por municipio | Mapa de calor sobre los diagnósticos de campo | `vistas/alertas_fitosanitarias.py` |
-| Venta directa (lotes, ofertas, chat) | Tablas transaccionales en PostgreSQL | `vistas/vender.py`, `vistas/lotes_zona.py`, `cofitech/mercado.py` |
+| Venta directa (lotes, ofertas, chat) · **inactiva en la Beta** | Tablas transaccionales en PostgreSQL; se activa con `COFITECH_MERCADO_ACTIVO=1` |
+| Simulador de venta y KPI «Interés en la venta directa» (Beta) | Mismas reglas de oferta y negociación, sin guardar el lote; voto 👍/👎 en `cafe.vw_kpis_consolidados` y `cafe.vw_interes_venta_directa` | `vistas/vender.py`, `cofitech/simulador_mercado.py`, `03_scripts/bd/06_kpi_interes_mercado.sql` | `vistas/vender.py`, `vistas/lotes_zona.py`, `cofitech/mercado.py` |
 | Asistente agronómico | RAG: LangChain + ChromaDB + Groq u Ollama | `pages/5_Chatbot.py`, `06_agente_rag/rag_pipeline.py` |
 | Telemetría y KPIs (solo administradores) | Eventos de uso y votos 👍/👎 | `vistas/telemetria.py`, `cofitech/telemetria.py` |
 
@@ -48,14 +51,25 @@ cd IA_Entrega_Final
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # Linux/Mac: source .venv/bin/activate
 pip install -r 07_app_web/requirements.txt
-python 06_agente_rag/rag_pipeline.py indexar
 cd 07_app_web
 python -m streamlit run app.py
 ```
 
-Abre http://localhost:8501. Sin base de datos la app funciona y guarda lo que produce en `05_resultados/`.
+Usa **Python 3.11**. Abre http://localhost:8501. Sin base de datos la app funciona y guarda lo que produce en `05_resultados/`. El índice del asistente se crea solo la primera vez que se abre «¿Qué hago?» (o a mano con `python 06_agente_rag/rag_pipeline.py indexar`).
 
 **Para la instalación completa** (archivo `.env`, base de datos PostgreSQL o Supabase con los datos cargados, acceso de administrador, pruebas y despliegue) sigue **[INSTALL.md](INSTALL.md)**.
+
+---
+
+## Versión en línea (Beta)
+
+La Beta se publica gratis en **Streamlit Community Cloud** (app) + **Supabase** (base de datos), con la dirección prevista `https://cofitech.streamlit.app`. Pasos, secretos y límites del plan gratis en [INSTALL.md → Producción](INSTALL.md#producción-beta-en-streamlit-community-cloud).
+
+Antes de abrirla a usuarios reales:
+
+- El ingreso pide la **autorización de tratamiento de datos (Ley 1581 de 2012)** y cada rol tiene la página «Aviso de privacidad». El texto conviene que lo revise la oficina jurídica de la universidad.
+- `.github/workflows/supabase_keepalive.yml` consulta la base cada 3 días para que Supabase no pause el proyecto gratis.
+- Los datos tienen fecha de corte (ver Limitaciones): su actualización todavía es manual.
 
 ---
 
@@ -85,7 +99,7 @@ IA_Entrega_Final/
 │   ├── procesados/            # *_validado.csv y master_cafe_*.csv (en git)
 │   ├── enriquecidos/          # Fuentes descargadas (clima, precios, DEM)
 │   └── imagenes_cafe/         # Imágenes para entrenar la CNN (no están en git)
-├── 02_notebooks/              # NB07–NB12
+├── 02_notebooks/              # NB07–NB12 (+ requirements_notebooks.txt para reentrenar)
 ├── 03_scripts/
 │   ├── descarga/              # Descarga de fuentes externas
 │   ├── etl/                   # Limpieza y validación → *_validado.csv
@@ -99,6 +113,7 @@ IA_Entrega_Final/
 ├── 08_docker/                 # Configuración Docker heredada (el despliegue oficial no usa Docker)
 ├── 09_presentacion/           # Guion y presentación
 ├── 10_diccionario_datos/      # Diccionario de datos
+├── .github/workflows/         # Keep-alive de Supabase
 ├── INSTALL.md                 # Instalación paso a paso
 └── README.md                  # Este archivo
 ```
@@ -141,7 +156,7 @@ Detalle y advertencias en la **Ficha técnica de modelos** de la app (solo admin
 |------|----------|---------|
 | App | Streamlit con navegación por rol (`st.navigation`) | Un solo código para la vista móvil del caficultor y la consola de la cooperativa |
 | Base de datos | PostgreSQL: esquema en estrella + tablas de la app; Supabase en la nube | Gratis, sin servidor propio; idéntico en local para pgAdmin |
-| Despliegue | Streamlit Community Cloud + Supabase, sin Docker | Restricción del proyecto: presupuesto cero |
+| Despliegue | Streamlit Community Cloud + Supabase, sin Docker; Beta con la venta directa inactiva | Restricción del proyecto: presupuesto cero; el valor de la Beta está en las herramientas de IA |
 | Agente | RAG con Groq (u Ollama local) | Gratis y sin entrenar un LLM |
 | Seguridad | Secretos en `.env` / `secrets.toml` (fuera de git); RLS sin políticas en Supabase; contraseña de administrador con hash PBKDF2 | La llave pública de Supabase no lee nada; la app no guarda datos personales |
 | Selección del MockUp | AHP de Saaty con vector propio principal (`03_scripts/ahp/ahp_cofitech.py`) | Decisión multicriterio reproducible (CR < 0,10 en todas las matrices) |
@@ -176,7 +191,7 @@ Las pruebas de base de datos solo corren con `COFITECH_TEST_DB_URL` apuntando a 
 
 - Las imágenes de entrenamiento vienen de datasets foráneos (Brasil, Ecuador); la captura propia es trabajo futuro. El Grad-CAM a veces atiende al fondo y no a la lesión.
 - Los datos tienen fecha de corte: precio FNC a diciembre de 2025 y ENSO a marzo de 2026. Cada cifra en pantalla muestra su fecha.
-- Los compradores de «Vender mi café» son **de demostración**: la app responde por ellos y la pantalla lo dice.
+- La venta directa está **inactiva en la Beta**. Si se activa, los compradores son **de demostración**: la app responde por ellos y la pantalla lo dice.
 - Los roles Caficultor y Agrónomo no tienen inicio de sesión; solo la administración está protegida.
 - El corpus del asistente todavía no incluye los documentos de Cenicafé validados: sin ellos, el asistente no da dosis.
 

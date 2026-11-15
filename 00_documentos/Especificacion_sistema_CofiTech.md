@@ -1,6 +1,6 @@
 # Especificación del sistema CofiTech · MockUp final (Opción 3: Plataforma Dual Adaptativa por Roles)
 
-*Anexo técnico de la entrega final · Data Thinking · Universidad Autónoma de Occidente · Octubre de 2026*
+*Anexo técnico de la entrega final · Data Thinking · Universidad Autónoma de Occidente · Octubre de 2026 · actualizado el 15 de noviembre de 2026 para la versión Beta 0.9.0*
 
 La alternativa seleccionada mediante AHP (puntaje global 0,5839) es una aplicación web única con dos vistas que comparten estado: una vista móvil para el **Caficultor** y una consola analítica para el **Agrónomo / Cooperativa**, más un permiso de **Administrador** del sistema. Esta especificación define qué debe hacer el sistema, con qué calidad y bajo qué restricciones, y registra el estado real de cada requerimiento en el prototipo.
 
@@ -73,7 +73,8 @@ La alternativa seleccionada mediante AHP (puntaje global 0,5839) es una aplicaci
 | **RF06** | **Persistencia con respaldo.** Diagnósticos, votos y eventos se guardan en PostgreSQL (Supabase) y en archivos locales. Si la base no responde, la app sigue funcionando con los archivos y lo avisa en pantalla. | Debe · ✅ |
 | **RF07** | **Control de acceso administrativo.** Telemetría, Ficha técnica de modelos y el panel de depuración solo son visibles con contraseña de administrador. La contraseña se guarda como *hash* PBKDF2-SHA256, con bloqueo tras 5 intentos fallidos y bitácora de accesos. | Debe · ✅ |
 | **RF08** | **Detección de anomalías de precio.** Alerta de meses con variación atípica del precio interno e ICO (volatilidad móvil de 6 meses, umbral en el percentil 97,5 de la historia previa, sin usar datos futuros). | Debería · ✅ |
-| **RF09** | **Venta directa (pasos 5–7 del MockUp ganador).** El caficultor publica un lote (tipo de café, cargas, fecha, variedad, puntaje SCA opcional y precio esperado frente al FNC). Los datos de la finca y el último diagnóstico se adjuntan solos (RF01). Los compradores interesados hacen una oferta formal con el total calculado, que se puede aceptar, rechazar o contraofertar en un chat por lote. La cooperativa ve la oferta de café por municipio de su zona («Oferta de café en mi zona»). Sin nombre, teléfono ni documento del caficultor (Ley 1581). Tablas `cafe.mk_comprador`, `mk_lote`, `mk_oferta` y `mk_mensaje`, con respaldo en `05_resultados/marketplace/`. **Los compradores del prototipo son ficticios** y la app responde por ellos con reglas simples; la pantalla lo dice siempre. | Debería · ✅ (con compradores de demostración) |
+| **RF09** | **Venta directa (pasos 5–7 del MockUp ganador).** El caficultor publica un lote (tipo de café, cargas, fecha, variedad, puntaje SCA opcional y precio esperado frente al FNC). Los datos de la finca y el último diagnóstico se adjuntan solos (RF01). Los compradores interesados hacen una oferta formal con el total calculado, que se puede aceptar, rechazar o contraofertar en un chat por lote. La cooperativa ve la oferta de café por municipio de su zona («Oferta de café en mi zona»). Sin nombre, teléfono ni documento del caficultor (Ley 1581). Tablas `cafe.mk_comprador`, `mk_lote`, `mk_oferta` y `mk_mensaje`, con respaldo en `05_resultados/marketplace/`. **Los compradores del prototipo son ficticios** y la app responde por ellos con reglas simples; la pantalla lo dice siempre. | Debería · ✅ Implementado y probado, **inactivo en la Beta 0.9.0**: las dos pantallas siguen en el menú marcadas «Inactivo», fuera del recorrido del caficultor y sin escribir en las tablas `mk_*`. Se activa sin cambiar código con `COFITECH_MERCADO_ACTIVO=1`. Mientras tanto, «Vender mi café» ofrece un **simulador de venta** (mismas reglas de oferta y negociación, solo compradores de demostración, sin guardar el lote; `cofitech/simulador_mercado.py`) y la pregunta «¿Te gustaría vender tu café desde CofiTech?», cuyo 👍/👎 es el KPI **Interés en la venta directa** (ver 2.1). |
+| **RF10** | **Autorización de tratamiento de datos (Ley 1581).** La pantalla de ingreso muestra el aviso de privacidad y exige marcar la casilla de autorización antes de entrar; cada rol tiene la página «Aviso de privacidad» con responsable, datos tratados (sin fotos ni texto de las preguntas), finalidades, transferencia a Groq y Supabase, derechos del artículo 8 y contacto. La versión aceptada queda en la sesión. Código: `cofitech/privacidad.py`, `vistas/acceso.py`, `vistas/privacidad.py`. | Debe · ✅ (texto pendiente de revisión jurídica) |
 
 ---
 
@@ -87,11 +88,20 @@ La alternativa seleccionada mediante AHP (puntaje global 0,5839) es una aplicaci
 | **RNF04** | Seguridad | Secretos fuera del código (`.env` / `secrets.toml`, excluidos de git). El esquema `cafe` no es accesible con la llave pública de Supabase (RLS activo sin políticas; permisos retirados a `anon` y `authenticated`). Contraseña de administrador solo como *hash*. | Pruebas de permisos con los roles de Supabase; `tests/test_seguridad.py`. | ✅ |
 | **RNF05** | Trazabilidad de fuentes | Toda cifra y toda recomendación indican su fuente (EVA, FNC, ICO, IDEAM/NOAA, Cenicafé) y su fecha. | Revisión de pantallas; prueba de que la cita de Cenicafé solo aparece con documento recuperado. | ✅ |
 
+### 2.1 KPI de producto de la Beta: interés en la venta directa
+
+| Campo | Definición |
+|---|---|
+| **Fórmula** | Votos 👍 / votos a «¿Te gustaría vender tu café desde CofiTech?» (un voto por sesión), por rol y en total. Se informa también separado para las sesiones que probaron el simulador antes de votar. |
+| **Para qué** | Decidir con datos si se activa RF09. Criterio propuesto: activar cuando, con al menos 30 votos, el interés supere el 60 % y haya al menos un comprador real dispuesto a registrarse. |
+| **Dónde se guarda** | `cafe.registro_eventos_uso` (`herramienta = 'Mercado'`, `accion = 'interes_venta_directa'`, `metadata.le_gustaria`, `metadata.uso_simulador`), sin texto ni datos personales. |
+| **Dónde se lee** | `cafe.vw_kpis_consolidados` (columnas `votos_interes_mercado`, `interes_mercado`, `sesiones_simulador`) y `cafe.vw_interes_venta_directa` (esquema v1.6; migración `06_kpi_interes_mercado.sql`). Pantalla «Telemetría y KPIs» (administrador), con respaldo en el archivo local si la base no responde. Una prueba verifica que la vista y el cálculo local coinciden. |
+
 > **Ajuste respecto al borrador de RNF03:** «disponibilidad garantizada» no se puede prometer con presupuesto cero, porque los planes gratuitos no tienen acuerdo de nivel de servicio:
 > - Streamlit Community Cloud suspende las apps tras **12 horas sin tráfico**.
 > - Supabase pausa los proyectos gratuitos tras **7 días de baja actividad**; se reactivan desde el panel sin perder datos.
 >
-> Por eso el requerimiento se redactó como degradación controlada. Para la sustentación basta con abrir la app y la base unas horas antes.
+> Por eso el requerimiento se redactó como degradación controlada. Para la sustentación basta con abrir la app y la base unas horas antes. Desde la Beta, el flujo `.github/workflows/supabase_keepalive.yml` consulta la base cada 3 días para que Supabase no la pause.
 
 ---
 
@@ -99,8 +109,8 @@ La alternativa seleccionada mediante AHP (puntaje global 0,5839) es una aplicaci
 
 | Tipo | Restricción | Implicación de diseño / mitigación |
 |---|---|---|
-| **Tecnológica** | Sin Docker en el despliegue. Streamlit Community Cloud como servidor y PostgreSQL administrado en Supabase. | Cliente propio `03_scripts/bd/db_client.py` (psycopg2 con *pool*), esquema idempotente `03_supabase_schema.sql` y conexión por el *Session pooler* (IPv4). **Riesgo:** Streamlit Community Cloud ofrece hasta **2,7 GB de RAM**, y TensorFlow, *sentence-transformers*, ChromaDB y los modelos de *boosting* juntos pueden acercarse a ese límite. Mitigación: cargar los modelos solo en la pantalla que los usa (`st.cache_resource`) y, si hace falta, convertir la CNN a TensorFlow Lite. |
-| **Legal y regulatoria** | Ley Estatutaria 1581 de 2012 (protección de datos personales) y Decreto 1377 de 2013, compilado en el Decreto 1074 de 2015. Derechos de autor: Ley 23 de 1982 y Decisión Andina 351 de 1993. | **Hoy no se recolectan datos personales:** el registro guarda municipio, clase, probabilidad, rol y un identificador aleatorio de sesión; no guarda nombres, teléfonos, coordenadas de la finca, fotos ni el texto de las preguntas. Si se habilita el registro de usuarios (necesario para medir KR1 y la retención), antes debe existir autorización previa, expresa e informada del titular (art. 9), aviso de privacidad y una política de tratamiento. Contenido de Cenicafé: se cita la publicación de origen en cada respuesta que lo use, y se verifican las condiciones de uso de cada documento antes de incorporarlo al corpus. |
+| **Tecnológica** | Sin Docker en el despliegue. Streamlit Community Cloud como servidor y PostgreSQL administrado en Supabase. | Cliente propio `03_scripts/bd/db_client.py` (psycopg2 con *pool*), esquema idempotente `03_supabase_schema.sql` y conexión por el *Session pooler* (IPv4). **Riesgo:** Streamlit Community Cloud ofrece hasta **2,7 GB de RAM**. Mitigación aplicada en la Beta: `requirements.txt` solo trae lo que la app importa (XGBoost, LightGBM, SHAP y seaborn pasaron a `02_notebooks/requirements_notebooks.txt`), `tensorflow-cpu` en Linux y carga de modelos por pantalla (`st.cache_resource`). Medido: **~1,6 GB** con todos los modelos cargados, sin pérdida de calidad (mismos `.keras`, `.pkl` y modelo de embeddings). |
+| **Legal y regulatoria** | Ley Estatutaria 1581 de 2012 (protección de datos personales) y Decreto 1377 de 2013, compilado en el Decreto 1074 de 2015. Derechos de autor: Ley 23 de 1982 y Decisión Andina 351 de 1993. | **Hoy no se recolectan datos personales:** el registro guarda municipio, clase, probabilidad, rol y un identificador aleatorio de sesión; no guarda nombres, teléfonos, coordenadas de la finca, fotos ni el texto de las preguntas. Aun así, desde la Beta el ingreso pide autorización y hay aviso de privacidad (RF10), porque los datos de la finca y las preguntas se transfieren a Groq y Supabase, fuera de Colombia. Si se habilita el registro de usuarios (necesario para medir KR1 y la retención), antes debe existir autorización previa, expresa e informada del titular (art. 9), aviso de privacidad y una política de tratamiento. Contenido de Cenicafé: se cita la publicación de origen en cada respuesta que lo use, y se verifican las condiciones de uso de cada documento antes de incorporarlo al corpus. |
 | **Operacional y de conectividad** | Zonas cafeteras con cobertura 3G/4G intermitente. | El diagnóstico envía una sola imagen. Las pantallas del caficultor no cargan mapas ni tablas pesadas, y el estado se conserva entre pantallas. **Proyección:** una PWA con captura sin conexión y envío diferido, y un canal de WhatsApp (foto → diagnóstico → recomendación) para quien no instala aplicaciones. Ninguna de las dos está en el alcance del prototipo. |
 | **Recursos** | Presupuesto de infraestructura igual a cero durante el prototipo académico. | Planes gratuitos de Streamlit Community Cloud, Supabase y Groq (LLM por API). Consecuencias asumidas: suspensión por inactividad (ver RNF03), límites de uso del LLM y sin respaldo automático de la base: se hace con `pg_dump` manual antes de la entrega. |
 
@@ -161,7 +171,8 @@ Frente a la práctica actual del caficultor (diagnóstico a ojo o espera del ext
 | RF05 | Hipótesis B2B2C | C2, C3 | `vistas/alertas_fitosanitarias.py` |
 | RF06 / RNF03 | Medición de todos los KPI | C4 | `03_scripts/bd/db_client.py`, `cofitech/repositorio.py` |
 | RF07 / RNF04 | — | C4 | `cofitech/seguridad.py` |
-| RF09 | Hipótesis B2B2C (red de datos de campo) | C1, C2, C3 | `cofitech/mercado.py`, `vistas/vender.py`, `vistas/lotes_zona.py` |
+| RF09 | Hipótesis B2B2C (red de datos de campo) | C1, C2, C3 | `cofitech/mercado.py`, `vistas/vender.py`, `vistas/lotes_zona.py` (inactivo en la Beta) |
+| RF10 / Ley 1581 | — | C4 | `cofitech/privacidad.py`, `vistas/acceso.py` |
 | RNF01 | Confianza Aceptada | C4 | `cofitech/telemetria.py` (`tiempo_respuesta_s`) |
 | RNF02 | KR2 | C1 | `cofitech/navegacion.py`, vistas del Caficultor |
 
@@ -170,8 +181,8 @@ Frente a la práctica actual del caficultor (diagnóstico a ojo o espera del ext
 1. Medir RNF01 en el entorno de despliegue (Streamlit Cloud).
 2. Incorporar documentos de Cenicafé validados al corpus del RAG y reindexar.
 3. Prueba de usabilidad con caficultores en celular (RNF02, KR2).
-4. Habilitar el registro de usuarios con autorización de tratamiento de datos (Ley 1581) para medir KR1 y la retención.
-5. RF09: reemplazar los compradores de demostración por compradores reales registrados (con su autorización de datos) y habilitar WhatsApp o llamada solo con números que ellos publiquen.
+4. Habilitar el registro de usuarios (la autorización de datos ya existe, RF10) para medir KR1 y la retención, y pedir la revisión jurídica del aviso de privacidad.
+5. RF09 (inactivo en la Beta): reemplazar los compradores de demostración por compradores reales registrados (con su autorización de datos) y habilitar WhatsApp o llamada solo con números que ellos publiquen.
 
 ## Referencias
 

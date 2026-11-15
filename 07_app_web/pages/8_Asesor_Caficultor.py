@@ -1,7 +1,8 @@
 """Hoy en mi finca: paso 1 del MockUp ganador (lámina de Sofía).
 
 Una pantalla de decisiones para el celular: precio FNC del día, clima y
-último diagnóstico, tareas del mes y aviso de compradores que llevan a Vender.
+último diagnóstico, tareas del mes y aviso de compradores que llevan a Vender
+(en la Beta, con el mercado inactivo, el aviso lleva al diagnóstico por foto).
 Todo sale del contexto compartido (``cofitech/contexto_finca.py``): esta
 pantalla ya no pide municipio, altitud ni área (RF01).
 
@@ -13,7 +14,7 @@ from datetime import date
 
 import streamlit as st
 
-from cofitech import marca, mercado
+from cofitech import config, marca, mercado
 from cofitech.calendario import CALENDARIO, MESES, estado_fenologico
 from cofitech.contexto_finca import Rol, mes_anio, obtener_contexto
 from cofitech.datos import series_precios
@@ -85,19 +86,28 @@ with col_izq:
             st.markdown(marca.tarjeta("Última hoja", f"{d.clase} {d.confianza:.0%}", riesgo, color),
                         unsafe_allow_html=True)
 
-    # ── Compradores (lleva a Vender) ──
-    lista = mercado.compradores()
-    de_zona = mercado.compradores_de_zona(lista, finca.departamento) if finca.departamento else []
-    if de_zona:
-        n = len(de_zona)
-        titulo = f"{n} comprador{'es' if n != 1 else ''} busca{'n' if n != 1 else ''} café de tu zona"
+    if config.mercado_activo():
+        # ── Compradores (lleva a Vender) ──
+        lista = mercado.compradores()
+        de_zona = mercado.compradores_de_zona(lista, finca.departamento) if finca.departamento else []
+        if de_zona:
+            n = len(de_zona)
+            titulo = f"{n} comprador{'es' if n != 1 else ''} busca{'n' if n != 1 else ''} café de tu zona"
+        else:
+            titulo = f"{len(lista)} compradores reciben ofertas en CofiTech"
+        st.markdown(marca.banner(titulo, "Contacto directo, sin intermediarios"
+                                 + (" · compradores de demostración" if all(c.es_demo for c in lista) else "")),
+                    unsafe_allow_html=True)
+        if ctx.rol == Rol.CAFICULTOR:
+            marca.enlace("vistas/vender.py", "Ir a Vender mi café", ":material/storefront:")
     else:
-        titulo = f"{len(lista)} compradores reciben ofertas en CofiTech"
-    st.markdown(marca.banner(titulo, "Contacto directo, sin intermediarios"
-                             + (" · compradores de demostración" if all(c.es_demo for c in lista) else "")),
-                unsafe_allow_html=True)
-    if ctx.rol == Rol.CAFICULTOR:
-        st.page_link("vistas/vender.py", label="Ir a Vender mi café", icon=":material/storefront:")
+        # Beta: el mercado está inactivo; el aviso principal lleva al diagnóstico con IA.
+        st.markdown(marca.banner("¿Viste manchas en las hojas?",
+                                 "Toma una foto: la CNN te dice qué enfermedad es y te muestra dónde la ve"),
+                    unsafe_allow_html=True)
+        if ctx.rol == Rol.CAFICULTOR:
+            marca.enlace("pages/4_Enfermedades.py", "Revisar una hoja", ":material/photo_camera:")
+        st.caption(":material/block: Vender mi café: inactivo en la versión Beta.")
 
 with col_der:
     # ── Tareas del mes ──
