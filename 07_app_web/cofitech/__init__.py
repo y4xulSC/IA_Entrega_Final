@@ -8,7 +8,8 @@ gratis de Streamlit Community Cloud (2 núcleos, 2,7 GB):
    de Python queda en los logs y se sabe en qué línea pasó.
 2. Hilos de TensorFlow, oneDNN y PyTorch limitados a los núcleos que el
    contenedor puede usar de verdad (no a los del servidor físico).
-3. Triton antes que TensorFlow (ver ``_cargar_triton_antes_que_tensorflow``).
+3. psycopg2 y Triton antes que TensorFlow (ver las funciones de abajo): cargados
+   después, el proceso se cae (``Segmentation fault`` o ``LLVM ERROR``).
 
 Todo se puede cambiar con variables de entorno o con claves de primer nivel en
 los *Secrets* de Streamlit, sin tocar código.
@@ -79,6 +80,26 @@ def _limitar_hilos() -> None:
         os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
 
+def _cargar_psycopg2_antes_que_tensorflow() -> None:
+    """Evita el ``Segmentation fault`` al guardar en Supabase después de usar la CNN.
+
+    TensorFlow carga sus librerías con ``RTLD_GLOBAL`` y trae su propia versión
+    de las funciones SSL (BoringSSL). ``psycopg2-binary`` trae libpq con su
+    propio OpenSSL. Si psycopg2 se carga *después* de TensorFlow, libpq termina
+    usando las funciones SSL de TensorFlow y el proceso se cae en
+    ``psycopg2.connect`` con cualquier conexión cifrada (Supabase exige SSL).
+    Cargando psycopg2 primero no pasa (probado con conexiones ``sslmode=require``
+    en Linux, en todos los órdenes posibles con TensorFlow, PyTorch y ChromaDB).
+    """
+    if "tensorflow" in sys.modules:
+        return
+    try:
+        import psycopg2  # noqa: F401
+        import psycopg2.pool  # noqa: F401
+    except Exception:              # sin psycopg2 la app usa los archivos locales
+        pass
+
+
 def _cargar_triton_antes_que_tensorflow() -> None:
     """Evita que el servidor se caiga en Linux (Streamlit Community Cloud).
 
@@ -105,4 +126,5 @@ def _cargar_triton_antes_que_tensorflow() -> None:
 
 _activar_faulthandler()
 _limitar_hilos()
+_cargar_psycopg2_antes_que_tensorflow()
 _cargar_triton_antes_que_tensorflow()

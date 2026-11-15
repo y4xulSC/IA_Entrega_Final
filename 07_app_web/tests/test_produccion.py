@@ -287,3 +287,23 @@ def test_hilos_limitados_y_faulthandler_activo():
     assert 1 <= cofitech._nucleos_disponibles() <= (os.cpu_count() or 1)
     assert int(os.environ["TF_NUM_INTRAOP_THREADS"]) <= 4
     assert os.environ["TF_NUM_INTEROP_THREADS"] == "1"
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="el choque de SSL con TensorFlow se vio en Linux")
+def test_psycopg2_se_carga_antes_que_tensorflow():
+    """Supabase exige SSL: con psycopg2 cargado después de TensorFlow, connect() tumba el proceso."""
+    pytest.importorskip("tensorflow")
+    pytest.importorskip("psycopg2")
+    import os
+    url = os.environ.get("COFITECH_TEST_DB_URL")
+    codigo = ("import cofitech, sys; assert 'psycopg2._psycopg' in sys.modules; import tensorflow, psycopg2\n"
+              "url = sys.argv[1] if len(sys.argv) > 1 else ''\n"
+              "if url:\n"
+              "    try:\n"
+              "        psycopg2.connect(url + ('&' if '?' in url else '?') + 'sslmode=require').close()\n"
+              "    except psycopg2.OperationalError:\n"
+              "        pass          # la base de pruebas no tiene SSL: basta con no caerse\n"
+              "print('ok')")
+    r = subprocess.run([sys.executable, "-c", codigo] + ([url] if url else []), cwd=APP, capture_output=True,
+                       text=True, timeout=600, env={"TF_CPP_MIN_LOG_LEVEL": "3", "PATH": "/usr/bin:/bin"})
+    assert r.returncode == 0 and r.stdout.strip().endswith("ok"), (r.returncode, r.stderr[-800:])
