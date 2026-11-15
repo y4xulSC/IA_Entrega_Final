@@ -253,3 +253,25 @@ def test_pantalla_de_telemetria_muestra_el_kpi_de_interes(tmp_path):
     assert not at.exception
     metrica = next(m for m in at.metric if m.label == "Interés en la venta directa")
     assert metrica.value == "67%"
+
+
+def test_icono_se_puede_usar_desde_varios_hilos():
+    """En la nube varias sesiones llaman st.set_page_config a la vez con el mismo ICONO."""
+    import io
+    import threading
+    from cofitech import marca
+    assert not isinstance(marca.ICONO, str) and getattr(marca.ICONO, "fp", None) is None   # sin archivo abierto
+    errores = []
+
+    def guardar():
+        try:
+            marca.ICONO.save(io.BytesIO(), format="PNG")
+        except Exception as error:                     # noqa: BLE001
+            errores.append(error)
+
+    hilos = [threading.Thread(target=guardar) for _ in range(16)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+    assert not errores
