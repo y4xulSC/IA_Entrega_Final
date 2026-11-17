@@ -21,6 +21,7 @@ import importlib.util
 import math
 import os
 import sys
+from pathlib import Path
 
 
 def _activar_faulthandler() -> None:
@@ -124,6 +125,23 @@ def _cargar_triton_antes_que_tensorflow() -> None:
         pass
 
 
+def _firmas_al_cargar() -> dict[str, tuple[int, int]]:
+    """Firma (fecha en ns, tamaño) de cada archivo de ``cofitech`` al cargar el paquete.
+
+    La usa ``cofitech.recarga`` para saber si Streamlit Cloud cambió el código
+    en caliente y hay que recargarlo.
+    """
+    firmas = {}
+    for ruta in Path(__file__).resolve().parent.glob("*.py"):
+        try:
+            estado = ruta.stat()
+        except OSError:
+            continue
+        firmas[os.path.realpath(ruta)] = (estado.st_mtime_ns, estado.st_size)
+    return firmas
+
+
+_FIRMAS_AL_CARGAR = _firmas_al_cargar()
 _activar_faulthandler()
 _limitar_hilos()
 _cargar_psycopg2_antes_que_tensorflow()

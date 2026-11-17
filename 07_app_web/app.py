@@ -29,7 +29,7 @@ from dataclasses import asdict
 
 import streamlit as st
 
-from cofitech import config, marca, repositorio, seguridad
+from cofitech import config, marca, recarga, repositorio, seguridad
 
 from cofitech import navegacion as nav
 from cofitech.contexto_finca import obtener_contexto, registrar_diagnostico, reiniciar_muestreo
@@ -91,6 +91,12 @@ if _version_streamlit() < VERSION_MINIMA:
         f"(instalado: {st.__version__}). Ejecuta: pip install -U streamlit"
     )
     st.stop()
+
+# Después de un `git push`, Streamlit Cloud actualiza la app sin reiniciar el proceso y
+# los módulos del proyecto pueden quedar en su versión vieja (ver cofitech/recarga.py).
+if recarga.actualizar_codigo():
+    st.cache_resource.clear()                # modelos y agente RAG de la versión vieja
+    st.rerun()                               # vuelve a ejecutar app.py con el código nuevo
 
 marca.aplicar()                              # logo oficial en la barra lateral + estilos del MockUp
 marca.aviso_beta()                           # franja «Beta» arriba de todas las pantallas, también el ingreso
