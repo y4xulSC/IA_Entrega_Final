@@ -26,6 +26,7 @@ Se lee desde `.env` en la raíz del proyecto:
 | `db_client.py` | Cliente de la app Streamlit para Supabase |
 | `04_vistas_kpis.sql` | Solo las vistas de KPIs (`telemetria_kpis`, `vw_kpis_consolidados`), para bases que ya tenían el esquema v1.3 |
 | `05_marketplace.sql` | Solo la venta directa (RF09): `mk_comprador`, `mk_lote`, `mk_oferta`, `mk_mensaje`, vista `vw_lotes_zona` y la herramienta `Mercado` en la telemetría, para bases que ya tenían el esquema v1.4 |
+| `07_variedad_catimor.sql` | Agrega la variedad «Catimor / Costa Rica 95» (resistencia a roya «Baja») a `dim_variedad_cafe` en bases ya creadas. Idempotente; las bases nuevas ya la traen en `01` y `03` |
 | `06_kpi_interes_mercado.sql` | KPI «Interés en la venta directa» (Beta): actualiza `telemetria_kpis` y `vw_kpis_consolidados` (columnas `votos_interes_mercado`, `interes_mercado`, `sesiones_simulador`) y crea `vw_interes_venta_directa`, para bases que ya tenían el esquema v1.5. Solo vistas: no toca datos |
 
 ## Flujo recomendado

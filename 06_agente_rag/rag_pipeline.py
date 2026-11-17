@@ -33,6 +33,7 @@
 from __future__ import annotations
 import os
 import json
+import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,6 +50,24 @@ DOCS_DIR = HERE.parent / "documentos_fuente"
 VECTOR_DIR = HERE.parent / "vectorstore"
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 VECTOR_DIR.mkdir(parents=True, exist_ok=True)
+# Huella del corpus con el que se construyó el índice: si cambia un documento
+# (por ejemplo, se agrega una variedad), el índice se reconstruye solo.
+ARCHIVO_HUELLA = VECTOR_DIR / "huella_corpus.txt"
+SUFIJOS_INDEXABLES = {".pdf", ".md", ".markdown", ".txt", ".csv", ""}
+
+
+def huella_corpus(docs_dir: Path = None) -> str:
+    """SHA-256 de los documentos indexables (ruta relativa + contenido)."""
+    docs_dir = docs_dir or DOCS_DIR
+    h = hashlib.sha256()
+    for archivo in sorted(p for p in docs_dir.rglob("*") if p.is_file()):
+        if archivo.suffix.lower() not in SUFIJOS_INDEXABLES:
+            continue
+        h.update(str(archivo.relative_to(docs_dir)).replace("\\", "/").encode("utf-8"))
+        h.update(b"\0")
+        h.update(archivo.read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()
 
 # Modelos de Groq en orden de preferencia. Groq retira modelos con frecuencia
 # (llama-3.1-8b-instant y llama-3.3-70b-versatile se apagaron el 16-ago-2026):
@@ -271,6 +290,13 @@ class RAGAgent:
             print(f"[indexar] Ya hay {count} chunks indexados en ChromaDB.")
             print("           Usa force=True para reindexar.")
             return
+        if count > 0:
+            # Reindexar = empezar de cero. Antes se agregaban los chunks otra vez
+            # y el asistente recuperaba fragmentos repetidos.
+            ids = vs._collection.get(include=[])["ids"]
+            for i in range(0, len(ids), 5000):
+                vs._collection.delete(ids=ids[i:i + 5000])
+            print(f"[indexar] Se borraron {len(ids)} chunks del índice anterior.")
 
         documentos = []
         for archivo in DOCS_DIR.rglob("*"):
@@ -307,7 +333,17 @@ class RAGAgent:
         print(f"\n   total chunks: {len(chunks)}")
 
         vs.add_documents(chunks)
+        ARCHIVO_HUELLA.write_text(huella_corpus(), encoding="ascii")
         print(f"  [OK] {len(chunks)} chunks indexados en {VECTOR_DIR}")
+
+    def indice_al_dia(self) -> bool:
+        """¿El índice tiene chunks y se construyó con los documentos actuales?"""
+        try:
+            if self._get_vectorstore()._collection.count() == 0:
+                return False
+            return ARCHIVO_HUELLA.read_text(encoding="ascii").strip() == huella_corpus()
+        except OSError:            # índice de una versión anterior, sin huella
+            return False
 
     def _cargar_documentos_demo(self):
         """Crea documentos de demo si no hay nada en documentos_fuente."""
@@ -417,6 +453,8 @@ en Colombia. Síntomas:
 
 Variedades resistentes a la roya en Colombia: Castillo, Colombia,
 Cenicafé 1, Tabi. Variedades susceptibles: Caturra, Bourbon, Típica.
+El Catimor (Costa Rica 95) que se siembra en Colombia no tiene resistencia
+suficiente: se maneja como susceptible.
 
 Sin manejo, la roya puede causar pérdidas del 40% de la producción.
 

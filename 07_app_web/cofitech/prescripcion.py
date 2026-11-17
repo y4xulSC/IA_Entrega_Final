@@ -56,7 +56,7 @@ def recomendacion_roya(incidencia_pct: Optional[float], variedad_resistente: Opt
     Args:
         incidencia_pct: % de hojas con roya medido en el lote (0–100); ``None`` si no se ha medido.
         variedad_resistente: ``True`` (Castillo, Colombia, Cenicafé 1, Tabi), ``False``
-            (Caturra, Típica, Borbón…) o ``None`` si no se conoce.
+            (Caturra, Catimor / Costa Rica 95, Típica, Borbón…) o ``None`` si no se conoce.
 
     Raises:
         ValueError: si la incidencia está fuera de 0–100.

@@ -28,7 +28,7 @@ import streamlit as st
 
 from cofitech import config, marca, mercado
 from cofitech import simulador_mercado as simulador
-from cofitech.contexto_finca import VARIEDADES, mes_anio, obtener_contexto
+from cofitech.contexto_finca import AYUDA_VARIEDAD, VARIEDADES, mes_anio, obtener_contexto
 from cofitech.mercado import cop
 from cofitech.telemetria import barra_valoracion, registrar_evento_uso, registrar_una_vez
 
@@ -375,7 +375,7 @@ def vista_publicar() -> None:
     c2.date_input("Disponible desde", value=date.today() + timedelta(days=7), min_value=date.today(),
                   format="DD/MM/YYYY", key="lote_disponible")
     variedades = list(VARIEDADES)
-    st.selectbox("Variedad", variedades, key="lote_variedad",
+    st.selectbox("Variedad", variedades, key="lote_variedad", help=AYUDA_VARIEDAD,
                  index=variedades.index(finca.variedad) if finca.variedad in variedades else len(variedades) - 1)
     con_puntaje = st.toggle("Tengo puntaje de catación (SCA)", value=tipo == "Especial", key="lote_con_puntaje")
     puntaje = st.slider("Puntaje SCA", 60, 100, 84, key="lote_puntaje") if con_puntaje else None

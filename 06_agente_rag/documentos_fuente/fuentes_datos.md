@@ -108,7 +108,7 @@ de descarga en `03_scripts/descarga/`.
 | dim_municipio | 600+ municipios cafeteros |
 | dim_periodo | 444 meses (1990-2026) |
 | dim_enfermedad | 6 enfermedades catalogadas |
-| dim_variedad_cafe | 9 variedades |
+| dim_variedad_cafe | 10 variedades |
 | fact_produccion | ~7263 |
 | fact_clima | ~6928 |
 | fact_precio | ~444 |

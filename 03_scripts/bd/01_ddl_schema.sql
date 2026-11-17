@@ -341,7 +341,10 @@ INSERT INTO cafe.dim_variedad_cafe
 ('Geisha',    'Arábica',  'Media', 1500, 1900),
 ('Cenicafé 1','Arábica',  'Alta',  1200, 1900),
 ('Tipica',    'Arábica',  'Baja',  1200, 1600),
-('Robusta',   'Robusta',   'Alta',  100,  900)
+('Robusta',   'Robusta',   'Alta',  100,  900),
+-- Catimor: líneas Caturra × Híbrido de Timor sin resistencia suficiente en Colombia (Cenicafé).
+-- Altitud óptima sin dato publicado para Colombia: NULL, no se inventa.
+('Catimor / Costa Rica 95', 'Arábica', 'Baja', NULL, NULL)
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO cafe.dim_departamento

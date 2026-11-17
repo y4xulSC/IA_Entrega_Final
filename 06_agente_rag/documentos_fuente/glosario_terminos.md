@@ -73,6 +73,12 @@ roya y CBD, alta productividad.
 **Tabi:** variedad de porte alto, resistente a roya. Café de buena
 calidad de taza.
 
+**Catimor / Costa Rica 95:** nombre genérico de líneas Caturra × Híbrido de
+Timor; en el campo también le dicen «Costa Rica». No es una variedad
+recomendada en Colombia: los Catimores que entraron al país no tienen
+resistencia suficiente a la roya, así que se manejan como susceptibles.
+Cenicafé recomienda renovarlos con Castillo, Cenicafé 1 o Tabi.
+
 **Borbón / Típica:** variedades tradicionales, calidad excelente,
 susceptibles a roya. Cultivadas en cafés especiales boutique.
 

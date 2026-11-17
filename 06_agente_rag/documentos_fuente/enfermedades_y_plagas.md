@@ -25,6 +25,19 @@ reducción dramática de producción (hasta 40% si no se controla).
 
 **Variedades susceptibles:** Caturra, Bourbon, Típica, Geisha.
 
+**Catimor (también llamado «Costa Rica» o Costa Rica 95):** Cenicafé aclara
+que «la llamada variedad Catimor no existe como tal»: es el nombre genérico de
+líneas que vienen de cruzar Caturra con el Híbrido de Timor. Los Catimores que
+llegaron a Colombia, como Costa Rica 95, son de origen sin trazabilidad y no
+tienen los factores genéticos de resistencia suficientes: muchos lotes sufrieron
+roya severa desde temprano. Para la roya se manejan como variedad susceptible
+(medir la incidencia en el lote y controlar según el umbral), y la Federación y
+Cenicafé recomiendan renovar esos lotes con variedades resistentes (Castillo,
+Cenicafé 1 o Tabi). No es lo mismo que la variedad Castillo, aunque ambas
+tengan Híbrido de Timor en su origen.
+Fuentes: Cenicafé, Avances Técnicos 426 (2012), «Variedad Castillo: preguntas
+frecuentes»; Cenicafé, preguntas y respuestas sobre la roya del cafeto.
+
 **Control:**
 - Cultural: sombrío parcial moderado, fertilización balanceada
   (especialmente nitrógeno y potasio), raleo de chupones, manejo de
