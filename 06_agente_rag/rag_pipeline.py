@@ -41,6 +41,10 @@ from typing import Optional, List
 from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
 
+# Firma del archivo al cargarlo (fecha en ns, tamaño): 07_app_web/cofitech/recarga.py la compara con la
+# del disco para recargar este módulo cuando Streamlit Cloud actualiza el código sin reiniciar.
+_FIRMA_ARCHIVO = (os.stat(__file__).st_mtime_ns, os.stat(__file__).st_size)
+
 load_dotenv(find_dotenv())
 
 # rutas

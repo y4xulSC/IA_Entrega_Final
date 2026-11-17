@@ -362,6 +362,7 @@ pip install -r 02_notebooks/requirements_notebooks.txt
 | El modelo de rendimiento no carga | `pip install scikit-learn==1.6.1` |
 | «No se pudo cargar el agente RAG» o el asistente no responde | Falta `GROQ_API_KEY` en el `.env` (o en los Secrets de la nube), o no se hizo el paso 5 |
 | La app no cambia después de editar código | Detén Streamlit (Ctrl+C) y vuelve a lanzarlo |
+| En Streamlit Cloud, después de un `git push`: `module '...' has no attribute ...` o `unexpected keyword argument` | La nube actualizó el código sin reiniciar el proceso. Desde nov-2026 la app lo detecta y se recarga sola (`cofitech/recarga.py`); si aún pasa, *Manage app* → ⋮ → **Reboot app** |
 | Pytest: `PermissionError: [WinError 5] Acceso denegado: '...\\Temp\\pytest-of-<usuario>'` | Pasa con el Python de Microsoft Store. Usa un entorno `.venv` con Python 3.11 de python.org (paso 2). Mientras tanto: `python -m pytest tests -q --basetemp=%USERPROFILE%\\pytest_cofitech` |
 | Pytest: fallan 4 pruebas de `test_seguridad.py` («DID NOT RAISE», `IndexError`) | El entorno tiene otra versión de Streamlit: instala las fijadas con `pip install -r 07_app_web/requirements.txt` dentro del `.venv` |
 | En la nube la app se reinicia con `LLVM ERROR: inconsistency in registered CommandLine options` | Choque entre TensorFlow y Triton (PyTorch) en Linux; lo evita `cofitech/__init__.py`. No quites ese archivo ni importes TensorFlow antes de `cofitech` |

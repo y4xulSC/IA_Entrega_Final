@@ -51,6 +51,9 @@ _MAX_CONEXIONES = 3             # el pooler gratuito de Supabase admite pocas
 _candado = threading.Lock()
 _pool = None
 _ultimo_fallo: float = 0.0
+# Firma del archivo al cargarlo (fecha en ns, tamaño): cofitech/recarga.py la compara con la del disco
+# para recargar este módulo cuando Streamlit Cloud actualiza el código sin reiniciar.
+_FIRMA_ARCHIVO: tuple[int, int] = (os.stat(__file__).st_mtime_ns, os.stat(__file__).st_size)
 _ultimo_error: Optional[str] = None
 _dotenv_leido = False
 
