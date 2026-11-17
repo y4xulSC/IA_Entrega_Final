@@ -42,9 +42,10 @@ def cargar_agente():
         return None, str(e)
 
 @st.cache_resource(show_spinner=False)
-def _indexar_una_vez(_agente) -> bool:
-    """Indexa una sola vez por proceso aunque varios usuarios abran el asistente a la vez."""
-    _agente.indexar()
+def _indexar_una_vez(_agente, huella: str) -> bool:
+    """Indexa una sola vez por proceso y por versión del corpus (``huella``),
+    aunque varios usuarios abran el asistente a la vez."""
+    _agente.indexar(force=True)
     return True
 
 
@@ -68,12 +69,16 @@ try:
     vs = agente._get_vectorstore()
     n_docs = vs._collection.count()
     st.caption(f"Índice: {n_docs} chunks vectorizados")
-    if n_docs == 0:
-        # En Streamlit Community Cloud el disco se borra en cada reinicio: el índice
-        # se reconstruye solo la primera vez que alguien abre el asistente.
+    if n_docs == 0 or not agente.indice_al_dia():
+        # El índice se (re)construye solo: la primera vez (en Streamlit Community
+        # Cloud el disco se puede borrar al reiniciar) y cuando cambia un documento
+        # de documentos_fuente/ (p. ej., al agregar una variedad al corpus).
+        from rag_pipeline import huella_corpus
         try:
-            with st.spinner("Preparando el asistente por primera vez (indexando documentos, ~1 min)..."):
-                _indexar_una_vez(agente)
+            mensaje = ("Preparando el asistente por primera vez (indexando documentos, ~1 min)..." if n_docs == 0
+                       else "Actualizando el asistente con documentos nuevos (~1 min)...")
+            with st.spinner(mensaje):
+                _indexar_una_vez(agente, huella_corpus())
             if vs._collection.count() > 0:
                 st.rerun()
             st.error("La indexación terminó sin documentos: revisa 06_agente_rag/documentos_fuente/.")

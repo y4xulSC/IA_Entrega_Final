@@ -75,16 +75,30 @@ UMBRAL_ROYA_ALTO: float = 0.80
 
 # Variedad -> ¿resistente a roya? (None = desconocido). Fuente: listado del
 # formulario de caracterización y de la base de conocimiento del agente RAG.
+#
+# Catimor: nombre genérico de líneas Caturra × Híbrido de Timor ("la llamada
+# variedad Catimor no existe como tal", Cenicafé, Avances Técnicos 426, 2012).
+# Los Catimores que entraron a Colombia (Costa Rica 95 y otros, de origen sin
+# trazabilidad) "no contaban con los factores genéticos de resistencia
+# suficientes" y muchos lotes sufrieron roya severa (Cenicafé, preguntas sobre
+# roya). Por eso cuenta como NO resistente: así la app recomienda medir la
+# incidencia y controlar, en vez de "no se recomienda control químico".
+# Los campesinos también lo llaman «Costa Rica»; un usuario lo buscó como
+# «catumorro». Va antes de «No sabe / Mezcla», que debe quedar de último.
 VARIEDADES: dict[str, Optional[bool]] = {
     "Castillo": True,
     "Colombia": True,
     "Cenicafé 1": True,
     "Tabi": True,
     "Caturra": False,
+    "Catimor / Costa Rica 95": False,
     "Borbón / Típica": False,
     "Geisha": False,
     "No sabe / Mezcla": None,
 }
+AYUDA_VARIEDAD = ("¿Tu café es Catimor, también llamado «Costa Rica»? Elige «Catimor / Costa Rica 95». "
+                  "Aunque viene del Híbrido de Timor, en Colombia no tiene resistencia suficiente a la roya. "
+                  "Si no la encuentras, elige «No sabe / Mezcla».")
 
 _FASES_ENSO = {"Nino": "El Niño", "Nina": "La Niña", "Neutro": "Neutro"}
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]

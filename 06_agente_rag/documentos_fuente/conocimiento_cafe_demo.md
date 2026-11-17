@@ -25,6 +25,8 @@ en Colombia. Síntomas:
 
 Variedades resistentes a la roya en Colombia: Castillo, Colombia,
 Cenicafé 1, Tabi. Variedades susceptibles: Caturra, Bourbon, Típica.
+El Catimor (Costa Rica 95) que se siembra en Colombia no tiene resistencia
+suficiente: se maneja como susceptible.
 
 Sin manejo, la roya puede causar pérdidas del 40% de la producción.
 

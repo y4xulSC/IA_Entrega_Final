@@ -356,6 +356,8 @@ pip install -r 02_notebooks/requirements_notebooks.txt
 | `there is no unique or exclusion constraint matching the ON CONFLICT` | Estás usando un script viejo: descarga la versión actual de `03_supabase_schema.sql` |
 | `db_client.py` dice «faltan las tablas de venta directa» | Ejecuta `03_scripts/bd/05_marketplace.sql` |
 | `db_client.py` dice «falta el KPI de interés en la venta directa» | Ejecuta `03_scripts/bd/06_kpi_interes_mercado.sql` |
+| `dim_variedad_cafe` tiene 9 filas y no aparece «Catimor / Costa Rica 95» | Base creada antes de nov-2026: ejecuta `03_scripts/bd/07_variedad_catimor.sql` (la app no depende de esa tabla) |
+| El asistente no conoce un documento nuevo de `documentos_fuente/` | Se reindexa solo al abrir «¿Qué hago?» cuando cambia el corpus. A mano: `python 06_agente_rag/rag_pipeline.py indexar --force` |
 | El modelo de rendimiento no carga | `pip install scikit-learn==1.6.1` |
 | «No se pudo cargar el agente RAG» o el asistente no responde | Falta `GROQ_API_KEY` en el `.env` (o en los Secrets de la nube), o no se hizo el paso 5 |
 | La app no cambia después de editar código | Detén Streamlit (Ctrl+C) y vuelve a lanzarlo |

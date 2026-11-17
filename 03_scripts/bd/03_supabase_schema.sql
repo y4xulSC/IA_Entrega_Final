@@ -24,6 +24,8 @@
 --     KPIs telemetria_kpis y vw_kpis_consolidados.
 --   · v1.5: venta directa (mk_comprador, mk_lote, mk_oferta, mk_mensaje y la
 --     vista vw_lotes_zona) y la herramienta 'Mercado' en la telemetría.
+--   · v1.6 (nov-2026): variedad «Catimor / Costa Rica 95» en dim_variedad_cafe.
+--     Para bases ya creadas: 07_variedad_catimor.sql.
 --   · v1.6: KPI «Interés en la venta directa» (voto 👍/👎 de la Beta) y uso del
 --     simulador de venta en vw_kpis_consolidados, y la vista
 --     vw_interes_venta_directa. Para bases v1.5: 06_kpi_interes_mercado.sql.
@@ -351,7 +353,10 @@ SELECT v.nombre, v.especie, v.resistencia_roya, v.altitud_optima_min, v.altitud_
 ('Geisha',    'Arábica',  'Media', 1500, 1900),
 ('Cenicafé 1','Arábica',  'Alta',  1200, 1900),
 ('Tipica',    'Arábica',  'Baja',  1200, 1600),
-('Robusta',   'Robusta',   'Alta',  100,  900)
+('Robusta',   'Robusta',   'Alta',  100,  900),
+-- Catimor: líneas Caturra × Híbrido de Timor sin resistencia suficiente en Colombia (Cenicafé).
+-- Altitud óptima sin dato publicado para Colombia: NULL, no se inventa.
+('Catimor / Costa Rica 95', 'Arábica', 'Baja', NULL, NULL)
 ) AS v (nombre, especie, resistencia_roya, altitud_optima_min, altitud_optima_max)
  WHERE NOT EXISTS (SELECT 1 FROM cafe.dim_variedad_cafe t WHERE t.nombre IS NOT DISTINCT FROM v.nombre);
 

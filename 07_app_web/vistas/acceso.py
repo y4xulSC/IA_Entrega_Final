@@ -10,7 +10,7 @@ import streamlit as st
 
 from cofitech import marca, privacidad, seguridad
 from cofitech.contexto_finca import (
-    RANGO_ALTITUD_MSNM, RANGO_AREA_HA, VARIEDADES, Rol,
+    AYUDA_VARIEDAD, RANGO_ALTITUD_MSNM, RANGO_AREA_HA, VARIEDADES, Rol,
     actualizar_finca, actualizar_zona, catalogo_municipios, definir_rol, obtener_contexto,
 )
 
@@ -70,6 +70,7 @@ if rol == Rol.CAFICULTOR:
         variedad = st.selectbox(
             "Variedad principal", variedades,
             index=variedades.index(finca.variedad) if finca.variedad in variedades else len(variedades) - 1,
+            help=AYUDA_VARIEDAD,
         )
         floracion = st.date_input(
             "Fecha de la floración principal (opcional)", value=finca.fecha_floracion_principal,
