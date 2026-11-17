@@ -33,7 +33,7 @@ log = logging.getLogger("cofitech.repositorio")
 
 COLUMNAS: list[str] = [
     "id", "fecha", "departamento", "municipio", "codigo_dane", "altitud_msnm",
-    "clase", "confianza", "modelo", "rol_origen", "es_demo", "feedback_usuario",
+    "clase", "confianza", "modelo", "rol_origen", "es_demo", "feedback_usuario", "probabilidades",
 ]
 COLUMNAS_RESUMEN: list[str] = ["codigo_dane", "departamento", "municipio", "fotos", "fotos_roya",
                                "pct_fotos_roya", "ultimo_reporte"]

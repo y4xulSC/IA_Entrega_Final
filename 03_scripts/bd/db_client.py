@@ -232,21 +232,44 @@ def insertar_diagnostico(registro: dict[str, Any]) -> None:
     Raises:
         BaseDatosNoDisponible: Sin credenciales o sin conexión.
     """
+    con_probs = "probabilidades" in _columnas("registro_diagnosticos")    # v1.7 del esquema
     sql = f"""
         INSERT INTO {ESQUEMA}.registro_diagnosticos
             (id, fecha, municipio, codigo_dane, departamento, altitud_msnm,
-             enfermedad_detectada, confianza, modelo, rol_origen, id_sesion, es_demo)
+             enfermedad_detectada, confianza, modelo, rol_origen, id_sesion, es_demo
+             {", probabilidades" if con_probs else ""})
         VALUES (%(id)s, COALESCE(%(fecha)s::timestamptz, NOW()), %(municipio)s, %(codigo_dane)s,
                 %(departamento)s, %(altitud_msnm)s, %(clase)s, %(confianza)s, %(modelo)s,
-                %(rol_origen)s, %(id_sesion)s, %(es_demo)s)
+                %(rol_origen)s, %(id_sesion)s, %(es_demo)s
+                {", %(probabilidades)s::jsonb" if con_probs else ""})
         ON CONFLICT (id) DO NOTHING
     """
     valores = {k: registro.get(k) for k in ("id", "fecha", "municipio", "codigo_dane", "departamento",
                                             "altitud_msnm", "clase", "confianza", "modelo",
                                             "rol_origen", "id_sesion")}
     valores["es_demo"] = bool(registro.get("es_demo", False))
+    probs = registro.get("probabilidades")
+    valores["probabilidades"] = json.dumps(probs) if probs else None
     with _conexion() as conn, conn.cursor() as cur:
         cur.execute(sql, valores)
+
+
+_CACHE_COLUMNAS: dict[str, tuple[float, frozenset[str]]] = {}
+_SEGUNDOS_CACHE_COLUMNAS = 600
+
+
+def _columnas(tabla: str) -> frozenset[str]:
+    """Columnas de ``cafe.<tabla>`` (en caché 10 min): permite trabajar con bases v1.6 y v1.7."""
+    ahora = time.monotonic()
+    guardado = _CACHE_COLUMNAS.get(tabla)
+    if guardado and ahora - guardado[0] < _SEGUNDOS_CACHE_COLUMNAS:
+        return guardado[1]
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema = %s AND table_name = %s",
+                    (ESQUEMA, tabla))
+        columnas = frozenset(fila[0] for fila in cur.fetchall())
+    _CACHE_COLUMNAS[tabla] = (ahora, columnas)
+    return columnas
 
 
 def registrar_feedback_diagnostico(id_diagnostico: str, coincide: bool) -> bool:
@@ -263,6 +286,80 @@ def registrar_feedback_diagnostico(id_diagnostico: str, coincide: bool) -> bool:
     with _conexion() as conn, conn.cursor() as cur:
         cur.execute(sql, (bool(coincide), id_diagnostico))
         return cur.rowcount == 1
+
+
+# ─────────────────────────── Fotos donadas (v1.7) ───────────────────────────
+_CAMPOS_FOTO = ("codigo", "id_diagnostico", "id_sesion", "imagen", "mime", "ancho_px", "alto_px", "bytes",
+                "clase_modelo", "confianza_modelo", "probabilidades", "modelo", "municipio", "departamento",
+                "codigo_dane", "version_aviso", "borrar_despues", "es_demo")
+
+
+def insertar_foto_donada(foto: dict[str, Any]) -> None:
+    """Guarda una foto donada (``imagen`` en bytes JPEG ya reducida y sin EXIF)."""
+    valores = {k: foto.get(k) for k in _CAMPOS_FOTO}
+    valores["imagen"] = bytes(foto["imagen"])          # psycopg2 lo envía como bytea
+    valores["probabilidades"] = json.dumps(foto["probabilidades"]) if foto.get("probabilidades") else None
+    valores["es_demo"] = bool(foto.get("es_demo", False))
+    sql = f"""
+        INSERT INTO {ESQUEMA}.registro_fotos_donadas ({", ".join(_CAMPOS_FOTO)})
+        VALUES ({", ".join(f"%({k})s" + ("::jsonb" if k == "probabilidades" else "") for k in _CAMPOS_FOTO)})
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, valores)
+
+
+def contar_fotos_donadas() -> int:
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(f"SELECT count(*) FROM {ESQUEMA}.registro_fotos_donadas")
+        return int(cur.fetchone()[0])
+
+
+def listar_fotos_donadas(pendientes: Optional[bool] = None, limite: int = 200) -> list[dict[str, Any]]:
+    """Metadatos de las fotos (sin la imagen). ``pendientes``: True sin revisar, False revisadas, None todas."""
+    filtro = {True: "WHERE clase_revisada IS NULL", False: "WHERE clase_revisada IS NOT NULL", None: ""}[pendientes]
+    sql = f"""
+        SELECT id::text AS id, codigo, fecha, id_diagnostico::text AS id_diagnostico, clase_modelo,
+               confianza_modelo::float AS confianza_modelo, probabilidades, modelo, municipio, departamento,
+               ancho_px, alto_px, bytes, borrar_despues, clase_revisada, notas_revision, revisada_en, es_demo
+          FROM {ESQUEMA}.registro_fotos_donadas {filtro}
+         ORDER BY fecha DESC
+         LIMIT %s
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (int(limite),))
+        return _filas(cur)
+
+
+def leer_imagen_foto(id_foto: str) -> Optional[bytes]:
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(f"SELECT imagen FROM {ESQUEMA}.registro_fotos_donadas WHERE id = %s", (id_foto,))
+        fila = cur.fetchone()
+    return bytes(fila[0]) if fila else None
+
+
+def revisar_foto(id_foto: str, clase_revisada: str, notas: Optional[str] = None) -> bool:
+    sql = f"""
+        UPDATE {ESQUEMA}.registro_fotos_donadas
+           SET clase_revisada = %s, notas_revision = %s, revisada_en = NOW()
+         WHERE id = %s
+    """
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(sql, (clase_revisada, (notas or None) and notas[:500], id_foto))
+        return cur.rowcount == 1
+
+
+def borrar_foto(id_o_codigo: str) -> bool:
+    """Borra una foto por su id o por el código que se le mostró al usuario (derecho de supresión)."""
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(f"DELETE FROM {ESQUEMA}.registro_fotos_donadas WHERE codigo = upper(%s) OR id::text = %s",
+                    (id_o_codigo.strip(), id_o_codigo.strip()))
+        return cur.rowcount > 0
+
+
+def borrar_fotos_vencidas() -> int:
+    with _conexion() as conn, conn.cursor() as cur:
+        cur.execute(f"DELETE FROM {ESQUEMA}.registro_fotos_donadas WHERE borrar_despues < NOW()")
+        return cur.rowcount
 
 
 def insertar_evento(evento: dict[str, Any]) -> None:
@@ -321,10 +418,12 @@ def leer_diagnosticos(limite: int = 5000):
     """Diagnósticos más recientes, con los nombres de columna que usa la app."""
     import pandas as pd
 
+    probs = ("probabilidades" if "probabilidades" in _columnas("registro_diagnosticos")
+             else "NULL::jsonb AS probabilidades")
     sql = f"""
         SELECT id::text AS id, fecha, departamento, municipio, codigo_dane, altitud_msnm,
                enfermedad_detectada AS clase, confianza::float AS confianza, modelo, rol_origen,
-               es_demo, feedback_usuario
+               es_demo, feedback_usuario, {probs}
           FROM {ESQUEMA}.registro_diagnosticos
          ORDER BY fecha DESC
          LIMIT %s
@@ -547,7 +646,10 @@ def probar_conexion() -> str:
         cur.execute(f"SELECT to_regclass('{ESQUEMA}.vw_interes_venta_directa') IS NOT NULL")
         kpi = "KPI de interés en la venta directa listo" if cur.fetchone()[0] else \
             "falta el KPI de interés en la venta directa (ejecuta 06_kpi_interes_mercado.sql)"
-    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos · {venta} · {kpi}"
+        cur.execute(f"SELECT to_regclass('{ESQUEMA}.registro_fotos_donadas') IS NOT NULL")
+        revision = "revisión de diagnósticos lista" if cur.fetchone()[0] else \
+            "falta la revisión de diagnósticos (ejecuta 08_revision_diagnosticos.sql)"
+    return f"PostgreSQL {version} · {diagnosticos} diagnósticos · {eventos} eventos · {venta} · {kpi} · {revision}"
 
 
 if __name__ == "__main__":

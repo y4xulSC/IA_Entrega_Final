@@ -120,7 +120,7 @@ psql -U postgres -d cafe_ia -f 03_scripts/bd/01_ddl_schema.sql
 psql -U postgres -d cafe_ia -f 03_scripts/bd/03_supabase_schema.sql
 ```
 
-La última fila debe decir `OK (v1.6) · esquema cafe con 18 tablas…; 5 compradores`.
+La última fila debe decir `OK (v1.7) · esquema cafe con 19 tablas…; 5 compradores`.
 
 ### Opción B · Supabase
 
@@ -188,9 +188,9 @@ Probar:
 python 03_scripts/bd/db_client.py
 ```
 
-Debe decir `OK · PostgreSQL … · tablas de venta directa listas · KPI de interés en la venta directa listo`.
+Debe decir `OK · PostgreSQL … · tablas de venta directa listas · KPI de interés en la venta directa listo · revisión de diagnósticos lista`.
 
-> **¿Ya tenías la base de una versión anterior?** v1.5: ejecuta `03_scripts/bd/06_kpi_interes_mercado.sql` (KPI de interés en la venta directa; solo vistas). v1.4: `05_marketplace.sql` y luego `06_kpi_interes_mercado.sql`. Ninguno borra datos. Detalle en `03_scripts/bd/README.md`.
+> **¿Ya tenías la base de una versión anterior?** Ejecuta en orden los que te falten, todos se pueden repetir sin borrar datos: v1.4 → `05_marketplace.sql`; v1.5 → `06_kpi_interes_mercado.sql`; v1.6 → `07_variedad_catimor.sql` y `08_revision_diagnosticos.sql` (probabilidades de la CNN y fotos donadas). Detalle en `03_scripts/bd/README.md`.
 
 ---
 
@@ -260,7 +260,7 @@ $env:COFITECH_TEST_DB_URL = "postgresql://postgres:<clave>@localhost:5432/cafe_p
 python -m pytest tests -q -rs
 ```
 
-Resultado esperado con las versiones de `requirements.txt`: **91 pasan y 6 se omiten** sin base de pruebas; **97 pasan** con ella (la base de pruebas debe estar en v1.6). `tests/test_produccion.py` cubre lo propio de la Beta: franja, mercado inactivo, autorización de datos y que TensorFlow y el asistente convivan en Linux.
+Resultado esperado con las versiones de `requirements.txt`: **118 pasan y 9 se omiten** sin base de pruebas en Linux; **127 pasan** con ella (la base de pruebas debe estar en v1.7). `tests/test_produccion.py` cubre lo propio de la Beta: franja, mercado inactivo, autorización de datos y que TensorFlow y el asistente convivan en Linux.
 
 ---
 
@@ -356,6 +356,7 @@ pip install -r 02_notebooks/requirements_notebooks.txt
 | `there is no unique or exclusion constraint matching the ON CONFLICT` | Estás usando un script viejo: descarga la versión actual de `03_supabase_schema.sql` |
 | `db_client.py` dice «faltan las tablas de venta directa» | Ejecuta `03_scripts/bd/05_marketplace.sql` |
 | `db_client.py` dice «falta el KPI de interés en la venta directa» | Ejecuta `03_scripts/bd/06_kpi_interes_mercado.sql` |
+| `db_client.py` dice «falta la revisión de diagnósticos» | Ejecuta `03_scripts/bd/08_revision_diagnosticos.sql`. Sin él la app funciona, pero no guarda las probabilidades y las fotos donadas quedan solo en el servidor (`05_resultados/fotos_donadas/`) |
 | `dim_variedad_cafe` tiene 9 filas y no aparece «Catimor / Costa Rica 95» | Base creada antes de nov-2026: ejecuta `03_scripts/bd/07_variedad_catimor.sql` (la app no depende de esa tabla) |
 | El asistente no conoce un documento nuevo de `documentos_fuente/` | Se reindexa solo al abrir «¿Qué hago?» cuando cambia el corpus. A mano: `python 06_agente_rag/rag_pipeline.py indexar --force` |
 | El modelo de rendimiento no carga | `pip install scikit-learn==1.6.1` |
@@ -375,7 +376,7 @@ pip install -r 02_notebooks/requirements_notebooks.txt
 
 - [ ] Entorno creado y `pip install -r 07_app_web/requirements.txt` sin errores
 - [ ] `.env` en la raíz con `GROQ_API_KEY` y los datos `PG_*`
-- [ ] Base creada (`01` + `03` en local, o `03` en Supabase) con la fila `OK (v1.6)`
+- [ ] Base creada (`01` + `03` en local, o `03` en Supabase) con la fila `OK (v1.7)`
 - [ ] `validar_pre_carga.py` con `Total OK: 6/6`
 - [ ] `02_carga_inicial.py` con «CARGA INICIAL COMPLETADA» y los conteos del paso 4.4
 - [ ] `db_client.py` con «tablas de venta directa listas»

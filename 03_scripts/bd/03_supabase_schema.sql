@@ -24,6 +24,9 @@
 --     KPIs telemetria_kpis y vw_kpis_consolidados.
 --   · v1.5: venta directa (mk_comprador, mk_lote, mk_oferta, mk_mensaje y la
 --     vista vw_lotes_zona) y la herramienta 'Mercado' en la telemetría.
+--   · v1.7 (nov-2026): probabilidades de la CNN en registro_diagnosticos y tabla
+--     registro_fotos_donadas (donación voluntaria de fotos). Para bases v1.6:
+--     08_revision_diagnosticos.sql.
 --   · v1.6 (nov-2026): variedad «Catimor / Costa Rica 95» en dim_variedad_cafe.
 --     Para bases ya creadas: 07_variedad_catimor.sql.
 --   · v1.6: KPI «Interés en la venta directa» (voto 👍/👎 de la Beta) y uso del
@@ -721,6 +724,54 @@ END
 $$;
 
 -- ────────────────────────────────────────────────────────────────────────────
+-- v1.7 · REVISIÓN DE DIAGNÓSTICOS: probabilidades y fotos donadas
+-- ────────────────────────────────────────────────────────────────────────────
+-- 1) Las 7 probabilidades de la CNN en cada diagnóstico: sin datos personales,
+--    permiten ver los casos dudosos (certeza baja o dos clases parecidas).
+ALTER TABLE cafe.registro_diagnosticos ADD COLUMN IF NOT EXISTS probabilidades JSONB;
+COMMENT ON COLUMN cafe.registro_diagnosticos.probabilidades IS
+    'Probabilidad de cada clase de la CNN, p. ej. {"Roya": 0.81, "Sano": 0.12, ...}. NULL antes de la v1.7.';
+
+-- 2) Fotos que el usuario DONA de forma voluntaria (casilla por foto, desmarcada
+--    por defecto) para revisar el diagnóstico y mejorar el modelo. Sin donación
+--    la foto no se guarda. Se guardan reducidas (máx. 1024 px) y sin metadatos
+--    EXIF (GPS, cámara). Se borran solas al vencer borrar_despues.
+--    Sin llave foránea a registro_diagnosticos a propósito: si la base no
+--    respondió al diagnosticar, ese registro solo quedó en el archivo local.
+CREATE TABLE IF NOT EXISTS cafe.registro_fotos_donadas (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    codigo             VARCHAR(9)  NOT NULL UNIQUE,       -- se le muestra al usuario para pedir el borrado
+    fecha              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    id_diagnostico     UUID,
+    id_sesion          VARCHAR(32),
+    imagen             BYTEA       NOT NULL,
+    mime               VARCHAR(20) NOT NULL DEFAULT 'image/jpeg',
+    ancho_px           INT,
+    alto_px            INT,
+    bytes              INT,
+    clase_modelo       VARCHAR(30) NOT NULL,
+    confianza_modelo   NUMERIC(5,4) CHECK (confianza_modelo BETWEEN 0 AND 1),
+    probabilidades     JSONB,
+    modelo             VARCHAR(80),
+    municipio          VARCHAR(80),
+    departamento       VARCHAR(60),
+    codigo_dane        VARCHAR(5) CHECK (codigo_dane ~ '^[0-9]{5}$'),
+    version_aviso      VARCHAR(20) NOT NULL,              -- aviso de privacidad vigente al donar
+    borrar_despues     TIMESTAMPTZ NOT NULL,
+    clase_revisada     VARCHAR(30) CHECK (clase_revisada IN
+                       ('Cercospora','Gotera','Miner','Phoma','Roya','Sano','SpiderMite','Indeterminada')),
+    notas_revision     VARCHAR(500),
+    revisada_en        TIMESTAMPTZ,
+    es_demo            BOOLEAN NOT NULL DEFAULT false,
+    CHECK (bytes IS NULL OR bytes <= 1500000)
+);
+CREATE INDEX IF NOT EXISTS idx_fotos_pendientes ON cafe.registro_fotos_donadas (fecha DESC) WHERE clase_revisada IS NULL;
+CREATE INDEX IF NOT EXISTS idx_fotos_vencen     ON cafe.registro_fotos_donadas (borrar_despues);
+CREATE INDEX IF NOT EXISTS idx_fotos_diag       ON cafe.registro_fotos_donadas (id_diagnostico);
+COMMENT ON TABLE cafe.registro_fotos_donadas IS
+    'Fotos donadas voluntariamente (Ley 1581: autorización por foto). Revisión experta del diagnóstico de la CNN.';
+
+-- ────────────────────────────────────────────────────────────────────────────
 -- SEGURIDAD
 -- ────────────────────────────────────────────────────────────────────────────
 -- La app se conecta con el usuario postgres (dueño de las tablas): RLS no la
@@ -731,6 +782,7 @@ ALTER TABLE cafe.mk_comprador          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cafe.mk_lote               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cafe.mk_oferta             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cafe.mk_mensaje            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cafe.registro_fotos_donadas ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -748,7 +800,7 @@ $$;
 -- ────────────────────────────────────────────────────────────────────────────
 -- VERIFICACIÓN
 -- ────────────────────────────────────────────────────────────────────────────
-SELECT 'OK (v1.6) · esquema cafe con ' ||
+SELECT 'OK (v1.7) · esquema cafe con ' ||
        (SELECT count(*) FROM information_schema.tables
          WHERE table_schema = 'cafe' AND table_type = 'BASE TABLE') ||
        ' tablas; registro_diagnosticos con ' ||

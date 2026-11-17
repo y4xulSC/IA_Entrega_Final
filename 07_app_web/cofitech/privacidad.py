@@ -15,7 +15,7 @@ import streamlit as st
 
 from cofitech import config
 
-VERSION_AVISO = "2026-11-15"
+VERSION_AVISO = "2026-11-17"
 _CLAVE_ACEPTO = "cofitech_acepto_aviso"
 
 TEXTO_CASILLA = ("Leí el aviso de privacidad y autorizo el tratamiento de los datos de mi finca o de mi zona "
@@ -38,8 +38,12 @@ Universidad Autónoma de Occidente (Cali). CofiTech está en versión **{config.
 
 - **Datos de la finca o de la zona:** municipio, departamento, altitud, hectáreas, variedad y fecha de floración
   (caficultor), o departamentos atendidos (agrónomo o cooperativa).
-- **Diagnósticos por foto:** la enfermedad detectada, la confianza del modelo, el municipio y la fecha. **La foto no
-  se guarda.**
+- **Diagnósticos por foto:** la enfermedad detectada, la confianza del modelo (incluida la probabilidad de cada
+  enfermedad), el municipio y la fecha. **La foto no se guarda**, salvo que decidas donarla.
+- **Fotos donadas (opcional):** solo si marcas la casilla de donación de esa foto. Se guarda reducida y sin los datos
+  de ubicación ni de la cámara, junto con el diagnóstico y el municipio, para que el equipo revise si el diagnóstico
+  fue correcto y para mejorar el modelo. Se borra sola a los 180 días; puedes pedir que se borre antes con el código
+  que te mostramos al donarla.
 - **Preguntas al asistente:** se envían, junto con los datos de la finca, a un proveedor de modelos de lenguaje
   (Groq, con servidores en Estados Unidos) para generar la respuesta. CofiTech no guarda el texto de las preguntas.
 - **Uso de la app:** qué herramienta se usó, cuánto tardó y si la respuesta te sirvió (votos 👍/👎), sin texto.
