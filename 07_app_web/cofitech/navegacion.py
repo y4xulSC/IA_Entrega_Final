@@ -77,6 +77,8 @@ MENU: dict[Rol, list[Pantalla]] = {
 ADMINISTRACION: list[Pantalla] = [
     Pantalla("telemetria", "vistas/telemetria.py", "Telemetría y KPIs", ":material/analytics:", "Administración"),
     Pantalla("ficha", "vistas/ficha_tecnica.py", "Ficha técnica de modelos", ":material/info:", "Administración"),
+    Pantalla("revision", "vistas/revision_fotos.py", "Revisión de diagnósticos", ":material/fact_check:",
+             "Administración"),
 ]
 
 # Recorrido principal de cada rol: de cada pantalla sale un enlace a la siguiente.

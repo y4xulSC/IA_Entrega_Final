@@ -56,6 +56,7 @@ desktop.ini
 05_resultados/tablas/
 05_resultados/reportes/
 05_resultados/marketplace/
+05_resultados/fotos_donadas/
 01_datos/procesados/etl_reportes/
 
 # Vector store del RAG

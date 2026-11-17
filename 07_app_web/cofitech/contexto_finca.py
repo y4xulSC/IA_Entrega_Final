@@ -355,6 +355,7 @@ def registrar_diagnostico(
     modelo: str,
     huella: Optional[str] = None,
     es_demo: bool = False,
+    probabilidades: Optional[dict[str, float]] = None,
 ) -> Diagnostico:
     """Guarda el diagnóstico de una foto en el contexto y en el repositorio.
 
@@ -365,6 +366,8 @@ def registrar_diagnostico(
         huella: Hash de la imagen. Streamlit re-ejecuta la pantalla en cada
             interacción; con la huella la misma foto se registra una sola vez.
         es_demo: Marca los registros simulados para excluirlos de los KPIs.
+        probabilidades: Probabilidad de cada clase de la CNN (se guarda para revisar
+            los casos dudosos; no es un dato personal).
 
     Returns:
         El diagnóstico vigente (el nuevo, o el anterior si la foto se repite).
@@ -399,6 +402,7 @@ def registrar_diagnostico(
         "clase": clase, "confianza": round(float(confianza), 4), "modelo": modelo,
         "rol_origen": ctx.rol.value if ctx.rol else None, "es_demo": es_demo,
         "id_sesion": repositorio.id_sesion(),
+        "probabilidades": {c: round(float(p), 4) for c, p in probabilidades.items()} if probabilidades else None,
     })
     return diag
 

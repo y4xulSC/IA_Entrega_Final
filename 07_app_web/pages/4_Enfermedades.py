@@ -23,7 +23,7 @@ from cofitech.contexto_finca import (
     CLASE_SANO, NOMBRES_CLASE, UMBRAL_ROYA_ALTO, obtener_contexto, registrar_diagnostico,
     registrar_incidencia_lote, riesgo_fitosanitario,
 )
-from cofitech import prescripcion, repositorio, vision
+from cofitech import config, fotos, prescripcion, repositorio, vision
 from cofitech.telemetria import barra_valoracion, cronometro, registrar_evento_uso
 
 CLAVE_PREGUNTA_PENDIENTE = "rag_pregunta_pendiente"   # la lee pages/5_Chatbot.py
@@ -95,7 +95,8 @@ elif archivo:
 
     # Conexión con el resto de la app (barra global, riesgo, alertas del agrónomo).
     previo = obtener_contexto().diagnostico
-    actual = registrar_diagnostico(clase=clase, confianza=min(max(conf, 0.0), 1.0), modelo=nombre_modelo, huella=huella)
+    actual = registrar_diagnostico(clase=clase, confianza=min(max(conf, 0.0), 1.0), modelo=nombre_modelo, huella=huella,
+                                   probabilidades=resultado.probabilidades)
     if actual is not previo:
         registrar_evento_uso("Visión", "diagnostico_ejecutado", {
             "modelo": nombre_modelo, "enfermedad": clase, "confianza": round(conf, 4),
@@ -107,6 +108,11 @@ elif archivo:
     with st.container(border=True):
         st.subheader(nombre_comun.capitalize(), anchor=False)
         st.caption(f"Certeza del modelo: {conf:.0%}")
+        alternativa = fotos.segunda_opcion(resultado.probabilidades)
+        if conf < fotos.UMBRAL_CERTEZA and alternativa:
+            nombre_alt = NOMBRES_CLASE.get(alternativa[0], (alternativa[0], ""))[0]
+            st.warning(f"**Certeza moderada.** También se parece a **{nombre_alt}** ({alternativa[1]:.0%}). "
+                       "Revisa la hoja con una lupa o toma otra foto más cerca, con buena luz y solo la hoja.")
         col_foto, col_mapa = st.columns(2)
         col_foto.image(Image.open(io.BytesIO(contenido)), caption="Tu foto", use_container_width=True)
         if resultado.superpuesta is not None:
@@ -129,6 +135,44 @@ elif archivo:
         herramienta="Visión", accion="validacion_diagnostico", campo="confianza_aceptada",
         metadata={"enfermedad": clase, "confianza": round(conf, 4), "modelo": nombre_modelo},
         al_votar=lambda coincide, ident=actual.id: repositorio.registrar_feedback(ident, coincide))
+
+    # Donación voluntaria de la foto (desmarcada por defecto; autorización por foto).
+    _DONADAS = "cofitech_fotos_donadas"                  # huella de la foto -> código entregado
+    donadas: dict = st.session_state.setdefault(_DONADAS, {})
+    with st.expander("Ayúdanos a mejorar el modelo (opcional)", icon=":material/volunteer_activism:",
+                     expanded=huella in donadas):
+        if huella in donadas:
+            st.success(f"¡Gracias! Guardamos esta foto para revisarla. **Código de tu foto: {donadas[huella]}**. "
+                       f"Si quieres que la borremos antes de {fotos.DIAS_RETENCION} días, escribe a "
+                       f"{config.contacto_datos()} con ese código.")
+        else:
+            st.markdown(
+                "Normalmente **no guardamos tu foto**. Si nos la donas, el equipo de CofiTech revisará si el "
+                "diagnóstico fue correcto y la usaremos para mejorar el modelo.\n\n"
+                f"- Se guarda reducida y **sin la ubicación ni los datos de la cámara**.\n"
+                f"- Se borra sola a los **{fotos.DIAS_RETENCION} días**, o antes si lo pides con el código que te damos.\n"
+                "- Va con el diagnóstico y tu municipio; no con tu nombre ni teléfono.\n"
+                "- Si en la foto salen personas o algo distinto de la hoja, mejor no la dones.")
+            acepta = st.checkbox("Autorizo que CofiTech guarde esta foto para revisar el diagnóstico y mejorar el "
+                                 "modelo, como se explica arriba y en el aviso de privacidad.", value=False,
+                                 key=f"donar_{huella}")
+            if st.button("Donar esta foto", disabled=not acepta, icon=":material/upload:", key=f"btn_donar_{huella}"):
+                ctx_d = obtener_contexto()
+                try:
+                    codigo, en_nube = fotos.donar(
+                        contenido, id_diagnostico=actual.id, clase=clase, confianza=conf,
+                        probabilidades=resultado.probabilidades, modelo=nombre_modelo,
+                        municipio=ctx_d.finca.municipio, departamento=ctx_d.finca.departamento,
+                        codigo_dane=ctx_d.finca.codigo_dane)
+                except RuntimeError as error:
+                    st.info(str(error))
+                except Exception as error:                 # imagen que no se pudo procesar
+                    st.error(f"No pudimos guardar la foto: {error}")
+                else:
+                    donadas[huella] = codigo
+                    registrar_evento_uso("Visión", "foto_donada", {
+                        "enfermedad": clase, "confianza": round(conf, 4), "en_nube": en_nube})
+                    st.rerun()
 
     if riesgo == "Alto":
         st.error(f"Riesgo fitosanitario de la sesión: **Alto** (roya con certeza de {UMBRAL_ROYA_ALTO:.0%} o más "

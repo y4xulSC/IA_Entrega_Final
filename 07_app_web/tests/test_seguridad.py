@@ -45,7 +45,7 @@ def test_hash_mal_formado_nunca_da_acceso(malo):
 
 def test_pantallas_de_administracion_no_estan_en_los_menus_de_rol():
     claves_admin = {p.clave for p in ADMINISTRACION}
-    assert claves_admin == {"telemetria", "ficha"}
+    assert claves_admin == {"telemetria", "ficha", "revision"}
     for rol in (Rol.CAFICULTOR, Rol.AGRONOMO):
         assert not claves_admin & {p.clave for p in MENU[rol]}
 
